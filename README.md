@@ -116,12 +116,30 @@ The API endpoints are fully self-documenting and interactive. Ensure your backen
 To access the system, you must log in.
 Navigate to the frontend (`http://localhost:5173`), and use your **superuser** credentials to access the Dashboard and manage inventory.
 
-## 🌟 Key Features
+## 🧠 Architectural Design & Problem-Solving Approach
 
-1. **Dashboard Analytics**: Visualize total stock, running balances, and product distributions with interactive Recharts.
-2. **Cartesian Product Generator**: Automatically generates all unique combinations of sub-variants whenever variant options (e.g., Size, Color) are added to a product.
-3. **Smart Stock Guard**: Backend validation ensures stock quantities strictly remain non-negative.
-4. **Atomic Transactions**: Ensures database integrity so partial data isn't saved when generating variants.
-5. **Real-time Synchronization**: Stock transactions automatically trigger Django signals to adjust SubVariant stock and the parent Product `TotalStock` perfectly in sync. 
+We chose a design that emphasizes database integrity, atomic execution, and robust user experience. Below are the key engineering decisions, assumptions, and edge cases we resolved:
+
+### 1. Atomic Transactions & Payload Consolidation
+* **Approach**: To prevent partial database saves (e.g., when a product details save succeeds but variant creations fail), we consolidated product creation and variant option declarations into a single, cohesive request payload (`POST /api/products/`).
+* **Implementation**: The backend parses stringified nested parameters during `multipart/form-data` uploads (allowing image uploads and complex variant schemas in one go) and wraps the entire routine in Django's `@transaction.atomic`. If any validation fails, the entire transaction rolls back.
+
+### 2. Database-Enforced Stock Integrity (The Stock Guard)
+* **Approach**: Relying solely on application-level checks to prevent negative stock values can lead to race conditions under concurrent workloads.
+* **Implementation**: We implemented checks at two layers:
+  - **Application Layer**: Serializers raise validation errors (`400 Bad Request`) if a sale transaction quantity exceeds available stock levels.
+  - **Database Layer**: Added a check constraint `stock_guard_positive` (via `models.CheckConstraint(condition=models.Q(stock__gte=0))`) to ensure PostgreSQL rejects any transaction that would result in negative sub-variant quantities.
+
+### 3. Automatic Sub-Variant Generation (Cartesian Product)
+* **Approach**: When variants (e.g., Size, Color) or variant options (e.g., S, M, Red, Blue) are added or updated, the system must automatically regenerate the combinations of options without duplicating existing sub-variants or losing current stock metrics.
+* **Implementation**: We use Python's `itertools.product` to calculate the Cartesian product of options. The code uses a differential update algorithm: it deletes combinations that are no longer valid, preserves matches that already exist, and safely creates missing variant sets.
+
+### 4. Soft Deletion & Unique Namespace Guards
+* **Approach**: When deleting a product, it must be soft-deleted (`is_deleted=True`) to maintain transaction history integrity. However, soft-deleted product codes and names should not block new products from reusing the same name or code.
+* **Implementation**: When `delete()` is called, we append `_del_<uuid>` to both the `ProductCode` and `ProductName` fields. This frees up the namespace immediately while preserving history logs in the database.
+
+### 5. Decoupled UI & Custom React Hooks
+* **Approach**: Direct Axios calls inside UI elements scatter state management and make updates difficult to maintain.
+* **Implementation**: We extracted all Axios queries, page changes, filter inputs, and debounced search routines into custom React hooks (`useProducts.js`, `useCategories.js`, `useStock.js`). The views focus exclusively on layouts and styling.
 
 Enjoy exploring the application!
