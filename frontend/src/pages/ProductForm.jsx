@@ -78,7 +78,6 @@ export default function ProductForm() {
     }
   }, [id, isEditMode]);
 
-  // Generate cartesian product of variants
   useEffect(() => {
     if (variants.length === 0 || variants.every(v => v.options.length === 0)) {
       setSubVariants([]);
@@ -107,7 +106,6 @@ export default function ProductForm() {
 
     const combinations = generateCombinations(0, {});
     
-    // Map to subvariant structure
     const newSubVariants = combinations.map((combo, index) => {
       const name = Object.values(combo).join(' - ');
       return {
@@ -165,7 +163,6 @@ export default function ProductForm() {
   const handleSave = async (e) => {
     e.preventDefault();
 
-    // Validate variant uniqueness
     const variantNames = variants.map(v => v.name.trim().toLowerCase()).filter(n => n);
     const uniqueNames = new Set(variantNames);
     if (uniqueNames.size !== variantNames.length) {
@@ -229,7 +226,7 @@ export default function ProductForm() {
   };
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6 pb-12">
+    <div className="max-w-5xl mx-auto space-y-6 pb-12 font-sans antialiased text-slate-800">
       <AlertModal 
         isOpen={alertConfig.isOpen}
         onClose={() => setAlertConfig({ ...alertConfig, isOpen: false })}
@@ -238,37 +235,39 @@ export default function ProductForm() {
         type={alertConfig.type}
       />
       <div>
-        <h1 className="text-3xl font-bold text-slate-900 dark:text-white">{isEditMode ? 'Edit Product' : 'Create New Product'}</h1>
-        <p className="text-slate-500 dark:text-slate-400 mt-1">{isEditMode ? 'Update product information and variants.' : 'Add a new product with variants and options.'}</p>
+        <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
+          {isEditMode ? 'Edit Product' : 'Create Product'}
+        </h1>
+        <p className="text-slate-500 text-sm mt-0.5">
+          {isEditMode ? 'Update product information and variants.' : 'Add a new product with variants and options.'}
+        </p>
       </div>
 
       <form onSubmit={handleSave} className="space-y-6">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Main Info */}
           <div className="col-span-1 lg:col-span-2 space-y-6">
-            <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm border border-slate-200 dark:border-slate-700">
-              <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">Basic Information</h3>
+            <div className="bg-white rounded-lg p-5 border border-slate-200 shadow-sm">
+              <h3 className="text-sm font-bold uppercase tracking-wider text-slate-700 mb-4">Basic Information</h3>
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Product Name</label>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">Product Name</label>
                   <input 
                     type="text" 
                     required
                     value={formData.name}
                     onChange={(e) => setFormData({...formData, name: e.target.value})}
-                    className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-slate-400 text-sm bg-white text-slate-900"
                     placeholder="e.g. Premium Wireless Headphones"
                   />
                 </div>
                 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Category</label>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">Category</label>
                     <select 
-                      required
                       value={formData.category}
                       onChange={(e) => setFormData({...formData, category: e.target.value})}
-                      className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+                      className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-slate-400 text-sm bg-white text-slate-900"
                     >
                       <option value="">Select Category</option>
                       {categories.map((cat) => (
@@ -279,73 +278,73 @@ export default function ProductForm() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Base Price (₹)</label>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">Base Price (₹)</label>
                     <input 
                       type="number" 
                       required
                       value={formData.price}
                       onChange={(e) => setFormData({...formData, price: e.target.value})}
-                      className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+                      className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-slate-400 text-sm bg-white text-slate-900"
                       placeholder="0.00"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Description</label>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">Description</label>
                   <textarea 
                     rows={4}
                     value={formData.description}
                     onChange={(e) => setFormData({...formData, description: e.target.value})}
-                    className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/50 resize-none"
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-slate-400 text-sm bg-white text-slate-900 resize-none"
                     placeholder="Enter product description..."
                   />
                 </div>
               </div>
             </div>
 
-            {/* Variants */}
-            <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm border border-slate-200 dark:border-slate-700">
+            <div className="bg-white rounded-lg p-5 border border-slate-200 shadow-sm">
               <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-bold text-slate-900 dark:text-white">Variants Builder</h3>
+                <h3 className="text-sm font-bold uppercase tracking-wider text-slate-700">Variants Builder</h3>
                 <button 
                   type="button"
                   onClick={addVariant}
-                  className="text-sm font-medium text-indigo-600 hover:text-indigo-700 flex items-center gap-1"
+                  className="text-xs font-bold text-slate-900 hover:underline flex items-center gap-1"
                 >
-                  <Plus size={16} /> Add Variant
+                  <Plus size={14} /> Add Variant
                 </button>
               </div>
               
               <div className="space-y-4">
                 {variants.map((variant, vIndex) => (
-                  <div key={vIndex} className="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-700 relative group">
+                  <div key={vIndex} className="p-4 bg-slate-50 rounded-lg border border-slate-200 relative group">
                     <button 
                       type="button"
                       onClick={() => removeVariant(vIndex)}
-                      className="absolute top-4 right-4 text-slate-400 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="absolute top-4 right-4 text-slate-400 hover:text-rose-600 transition-colors"
+                      title="Remove Variant"
                     >
                       <Trash2 size={16} />
                     </button>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div>
-                        <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Option Name</label>
+                        <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Option Name</label>
                         <input 
                           type="text" 
                           value={variant.name}
                           onChange={(e) => updateVariantName(vIndex, e.target.value)}
                           placeholder="e.g. Color, Size"
-                          className="w-full px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+                          className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-slate-400 bg-white"
                         />
                       </div>
                       <div className="md:col-span-2">
-                        <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Values (Press Enter)</label>
-                        <div className="flex flex-wrap gap-2 mb-2">
+                        <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Values (Press Enter)</label>
+                        <div className="flex flex-wrap gap-1.5 mb-2">
                           {variant.options.map((opt, optIndex) => (
-                            <span key={optIndex} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-sm bg-indigo-100 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-300">
+                            <span key={optIndex} className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-semibold bg-slate-250 border border-slate-300 text-slate-800">
                               {opt}
-                              <button type="button" onClick={() => removeVariantOption(vIndex, optIndex)} className="hover:text-indigo-900 dark:hover:text-indigo-100">
-                                <X size={14} />
+                              <button type="button" onClick={() => removeVariantOption(vIndex, optIndex)} className="text-slate-400 hover:text-slate-900">
+                                <X size={12} />
                               </button>
                             </span>
                           ))}
@@ -360,7 +359,7 @@ export default function ProductForm() {
                             }
                           }}
                           placeholder="Add value and press enter"
-                          className="w-full px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+                          className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-slate-400 bg-white"
                         />
                       </div>
                     </div>
@@ -369,28 +368,27 @@ export default function ProductForm() {
               </div>
             </div>
 
-            {/* Sub-Variants Preview */}
             {subVariants.length > 0 && (
-              <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm border border-slate-200 dark:border-slate-700">
-                <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">Generated Sub-variants</h3>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm text-left">
-                    <thead className="text-xs text-slate-500 uppercase bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700">
+              <div className="bg-white rounded-lg p-5 border border-slate-200 shadow-sm">
+                <h3 className="text-sm font-bold uppercase tracking-wider text-slate-700 mb-4">Generated Sub-variants</h3>
+                <div className="overflow-x-auto border border-slate-200 rounded-lg">
+                  <table className="w-full text-xs text-left">
+                    <thead className="text-slate-500 uppercase bg-slate-50 border-b border-slate-200">
                       <tr>
-                        <th className="px-4 py-3 font-semibold">Variant</th>
-                        <th className="px-4 py-3 font-semibold w-32">SKU</th>
-                        <th className="px-4 py-3 font-semibold w-24">Price Offset</th>
+                        <th className="px-4 py-2.5 font-bold">Variant Combination</th>
+                        <th className="px-4 py-2.5 font-bold w-36">SKU</th>
+                        <th className="px-4 py-2.5 font-bold w-28">Price Offset</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
+                    <tbody className="divide-y divide-slate-100">
                       {subVariants.map((sv, idx) => (
-                        <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-700/20">
-                          <td className="px-4 py-3 font-medium text-slate-900 dark:text-white">{sv.name}</td>
+                        <tr key={idx} className="hover:bg-slate-50">
+                          <td className="px-4 py-3 font-semibold text-slate-900">{sv.name}</td>
                           <td className="px-4 py-3">
-                            <input type="text" defaultValue={sv.sku} className="w-full px-2 py-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded focus:outline-none focus:border-indigo-500 text-xs" />
+                            <input type="text" defaultValue={sv.sku} className="w-full px-2 py-1 bg-white border border-slate-200 rounded focus:outline-none focus:border-slate-400 text-xs font-semibold" />
                           </td>
                           <td className="px-4 py-3">
-                            <input type="number" defaultValue={sv.price_offset} className="w-full px-2 py-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded focus:outline-none focus:border-indigo-500 text-xs" />
+                            <input type="number" defaultValue={sv.price_offset} className="w-full px-2 py-1 bg-white border border-slate-200 rounded focus:outline-none focus:border-slate-400 text-xs font-semibold" />
                           </td>
                         </tr>
                       ))}
@@ -401,30 +399,29 @@ export default function ProductForm() {
             )}
           </div>
 
-          {/* Sidebar */}
           <div className="space-y-6">
-            <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm border border-slate-200 dark:border-slate-700">
-              <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">Product Image</h3>
+            <div className="bg-white rounded-lg p-5 border border-slate-200 shadow-sm">
+              <h3 className="text-sm font-bold uppercase tracking-wider text-slate-700 mb-4">Product Image</h3>
               <div className="mt-2">
                 {imagePreview ? (
-                  <div className="relative rounded-xl overflow-hidden group">
+                  <div className="relative rounded-lg overflow-hidden border border-slate-200 group">
                     <img src={imagePreview} alt="Preview" className="w-full h-48 object-cover" />
-                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <div className="absolute inset-0 bg-slate-950/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                       <button 
                         type="button" 
                         onClick={() => { setImage(null); setImagePreview(null); }}
-                        className="p-2 bg-rose-500 text-white rounded-lg hover:bg-rose-600 transition-colors"
+                        className="p-2 bg-rose-600 text-white rounded-lg hover:bg-rose-700 transition-colors"
                       >
-                        <Trash2 size={18} />
+                        <Trash2 size={16} />
                       </button>
                     </div>
                   </div>
                 ) : (
-                  <label className="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700/50 hover:border-indigo-500 dark:hover:border-indigo-500 transition-all cursor-pointer bg-slate-50/50 dark:bg-slate-900/50">
-                    <div className="flex flex-col items-center justify-center pt-5 pb-6 text-slate-500 dark:text-slate-400">
-                      <Upload className="w-8 h-8 mb-3 text-indigo-500" />
-                      <p className="text-sm font-medium">Click to upload image</p>
-                      <p className="text-xs mt-1">SVG, PNG, JPG or GIF</p>
+                  <label className="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed border-slate-200 rounded-lg hover:bg-slate-50 hover:border-slate-400 transition-all cursor-pointer bg-slate-50">
+                    <div className="flex flex-col items-center justify-center pt-5 pb-6 text-slate-500">
+                      <Upload className="w-6 h-6 mb-2 text-slate-400" />
+                      <p className="text-xs font-bold uppercase tracking-wider">Upload Product Image</p>
+                      <p className="text-[10px] text-slate-400 mt-1">PNG, JPG or WEBP</p>
                     </div>
                     <input type="file" className="hidden" accept="image/*" onChange={handleImageChange} />
                   </label>
@@ -432,13 +429,13 @@ export default function ProductForm() {
               </div>
             </div>
 
-            <div className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-6 border border-slate-200 dark:border-slate-700">
-              <div className="flex flex-col gap-3">
-                <button type="submit" className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold transition-all shadow-lg shadow-indigo-500/30">
-                  <Save size={18} />
+            <div className="bg-slate-50 rounded-lg p-5 border border-slate-200">
+              <div className="flex flex-col gap-2">
+                <button type="submit" className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-950 hover:bg-slate-800 text-white rounded-lg font-bold text-xs uppercase tracking-wider shadow-sm transition-colors">
+                  <Save size={14} />
                   Save Product
                 </button>
-                <button type="button" onClick={() => navigate('/products')} className="w-full px-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-xl font-medium transition-colors">
+                <button type="button" onClick={() => navigate('/products')} className="w-full px-4 py-2.5 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 rounded-lg font-bold text-xs uppercase tracking-wider transition-colors">
                   Cancel
                 </button>
               </div>

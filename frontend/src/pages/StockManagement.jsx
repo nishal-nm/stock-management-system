@@ -27,7 +27,6 @@ export default function StockManagement() {
   useEffect(() => {
     const fetchProducts = async () => {
       try {
-        // Fetch all products (limit handled by standard pagination, we might need a non-paginated endpoint for dropdowns, but for now we'll fetch page 1 with large page size or rely on search)
         const response = await client.get('/products/?page_size=100');
         const data = response.data.results || response.data;
         setProducts(data);
@@ -103,10 +102,8 @@ export default function StockManagement() {
       setTimeout(() => setSuccessMessage(''), 3000);
       setQuantity('');
       setNotes('');
-      // Refresh sub-variants to get updated stock
       fetchSubVariants(selectedProduct.id);
       
-      // Update local product total stock so it reflects immediately
       const updateStock = (list) => list.map(p => {
         if (p.id === selectedProduct.id) {
           const newStock = transactionType === 'IN' ? parseFloat(p.TotalStock) + qty : parseFloat(p.TotalStock) - qty;
@@ -129,39 +126,39 @@ export default function StockManagement() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6 pb-12">
+    <div className="max-w-7xl mx-auto space-y-6 pb-12 font-sans antialiased text-slate-800">
       <div>
-        <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Stock Movement</h1>
-        <p className="text-slate-500 dark:text-slate-400 mt-1">Record purchases (Stock In) or sales/adjustments (Stock Out).</p>
+        <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">Stock Movement</h1>
+        <p className="text-slate-500 text-sm mt-0.5">Record purchases (Stock In) or sales/adjustments (Stock Out).</p>
       </div>
 
-      <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col md:flex-row">
+      <div className="bg-white rounded-lg border border-slate-200 shadow-sm flex flex-col md:flex-row overflow-hidden">
         {/* Left side: Product Selection */}
-        <div className="w-full md:w-1/3 border-r border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/20 p-6 flex flex-col">
-          <div className="relative mb-4">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+        <div className="w-full md:w-1/3 border-r border-slate-200 bg-slate-50 p-4 flex flex-col min-h-[450px]">
+          <div className="relative mb-3">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
             <input 
               type="text" 
               placeholder="Search product..." 
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-9 pr-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/50 text-sm shadow-sm"
+              className="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-slate-400 text-sm shadow-sm"
             />
           </div>
           
-          <div className="space-y-2 flex-1 overflow-y-auto custom-scrollbar pr-2">
+          <div className="space-y-1.5 flex-1 overflow-y-auto custom-scrollbar pr-1.5">
             {loading ? (
-              <div className="flex justify-center py-10"><Loader2 className="animate-spin text-indigo-500" /></div>
+              <div className="flex justify-center py-10"><Loader2 className="animate-spin text-slate-950" size={24} /></div>
             ) : filteredProducts.map((p) => (
               <button 
                 key={p.id}
                 onClick={() => handleProductSelect(p)}
-                className={`w-full text-left p-4 rounded-2xl transition-all ${selectedProduct?.id === p.id ? 'bg-indigo-50 border-indigo-200 shadow-sm dark:bg-indigo-500/20 dark:border-indigo-500/30 border' : 'hover:bg-white dark:hover:bg-slate-800 border border-transparent'}`}
+                className={`w-full text-left p-3.5 rounded-lg border transition-colors ${selectedProduct?.id === p.id ? 'bg-slate-900 border-slate-900 text-white shadow-sm' : 'hover:bg-slate-200/60 bg-white border-slate-200'}`}
               >
-                <div className="font-semibold text-slate-900 dark:text-white text-sm">{p.ProductName}</div>
-                <div className="flex justify-between mt-2 text-xs text-slate-500">
-                  <span className="font-mono bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">{p.ProductCode}</span>
-                  <span className={`font-bold ${parseFloat(p.TotalStock) <= 0 ? 'text-rose-500' : 'text-emerald-500'}`}>{parseFloat(p.TotalStock).toFixed(0)} total</span>
+                <div className="font-semibold text-sm line-clamp-1">{p.ProductName}</div>
+                <div className="flex justify-between mt-2 text-xs">
+                  <span className={`font-mono px-1 py-0.5 rounded text-[10px] ${selectedProduct?.id === p.id ? 'bg-slate-800 text-slate-350' : 'bg-slate-100 text-slate-500'}`}>{p.ProductCode}</span>
+                  <span className={`font-bold ${parseFloat(p.TotalStock) <= 0 ? 'text-rose-500' : selectedProduct?.id === p.id ? 'text-emerald-450' : 'text-emerald-700'}`}>{parseFloat(p.TotalStock).toFixed(0)} units</span>
                 </div>
               </button>
             ))}
@@ -169,29 +166,28 @@ export default function StockManagement() {
         </div>
         
         {/* Right side: Movement Form */}
-        <div className="w-full md:w-2/3 p-6 md:p-10 bg-white dark:bg-slate-800">
+        <div className="w-full md:w-2/3 p-6 md:p-8 bg-white">
           {selectedProduct ? (
-            <form onSubmit={handleSubmit} className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
-              <div className="pb-6 border-b border-slate-100 dark:border-slate-700/50">
-                <h3 className="text-2xl font-bold text-slate-900 dark:text-white">{selectedProduct.ProductName}</h3>
+            <form onSubmit={handleSubmit} className="space-y-6 animate-in fade-in duration-150">
+              <div className="pb-4 border-b border-slate-200">
+                <h3 className="text-xl font-bold text-slate-900">{selectedProduct.ProductName}</h3>
                 
                 {/* Sub-Variant Selection */}
                 <div className="mt-4">
-                  <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Select Sub-Variant</label>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">Select Sub-Variant</label>
                   {loadingSubVariants ? (
-                    <div className="flex items-center gap-2 text-indigo-500 text-sm"><Loader2 className="animate-spin" size={16} /> Loading variants...</div>
+                    <div className="flex items-center gap-2 text-slate-500 text-xs"><Loader2 className="animate-spin" size={14} /> Loading variants...</div>
                   ) : subVariants.length === 0 ? (
-                    <div className="text-rose-500 text-sm">This product has no sub-variants. Add variants first.</div>
+                    <div className="text-rose-600 text-xs font-semibold">This product has no sub-variants. Add variants first.</div>
                   ) : (
                     <select
                       value={selectedSubVariant ? selectedSubVariant.id : ''}
                       onChange={(e) => setSelectedSubVariant(subVariants.find(sv => sv.id === e.target.value))}
-                      className="w-full px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/50 text-sm shadow-sm"
+                      className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-slate-400 text-sm bg-white text-slate-900 font-medium"
                     >
                       {subVariants.map(sv => (
                         <option key={sv.id} value={sv.id}>
-                          {sv.options.map(opt => opt.value).join(' - ')} 
-                          (Current Stock: {parseFloat(sv.stock).toFixed(0)})
+                          {sv.options.map(opt => opt.value).join(' - ')} (Current Stock: {parseFloat(sv.stock).toFixed(0)})
                         </option>
                       ))}
                     </select>
@@ -204,41 +200,41 @@ export default function StockManagement() {
                   type="button"
                   onClick={() => { setTransactionType('IN'); setError(''); }}
                   disabled={subVariants.length === 0}
-                  className={`flex flex-col items-center justify-center gap-3 p-6 rounded-2xl border-2 transition-all disabled:opacity-50 ${transactionType === 'IN' ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 shadow-sm' : 'border-slate-200 dark:border-slate-700 hover:border-emerald-200 text-slate-500'}`}
+                  className={`flex flex-col items-center justify-center gap-2.5 p-5 rounded-lg border-2 transition-colors disabled:opacity-50 ${transactionType === 'IN' ? 'border-emerald-600 bg-emerald-50 text-emerald-800' : 'border-slate-200 hover:border-slate-300 text-slate-500 bg-white'}`}
                 >
-                  <ArrowDownToLine size={28} />
-                  <span className="font-bold text-lg">Stock IN</span>
-                  <span className="text-xs font-medium opacity-70">Purchase / Return</span>
+                  <ArrowDownToLine size={24} />
+                  <span className="font-bold text-sm uppercase tracking-wider">Stock IN</span>
+                  <span className="text-[10px] font-semibold opacity-80">Purchase / Return</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => { setTransactionType('OUT'); setError(''); }}
                   disabled={subVariants.length === 0}
-                  className={`flex flex-col items-center justify-center gap-3 p-6 rounded-2xl border-2 transition-all disabled:opacity-50 ${transactionType === 'OUT' ? 'border-rose-500 bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-400 shadow-sm' : 'border-slate-200 dark:border-slate-700 hover:border-rose-200 text-slate-500'}`}
+                  className={`flex flex-col items-center justify-center gap-2.5 p-5 rounded-lg border-2 transition-colors disabled:opacity-50 ${transactionType === 'OUT' ? 'border-rose-600 bg-rose-50 text-rose-800' : 'border-slate-200 hover:border-slate-300 text-slate-500 bg-white'}`}
                 >
-                  <ArrowUpFromLine size={28} />
-                  <span className="font-bold text-lg">Stock OUT</span>
-                  <span className="text-xs font-medium opacity-70">Sale / Damage</span>
+                  <ArrowUpFromLine size={24} />
+                  <span className="font-bold text-sm uppercase tracking-wider">Stock OUT</span>
+                  <span className="text-[10px] font-semibold opacity-80">Sale / Damage</span>
                 </button>
               </div>
               
               {error && (
-                <div className="flex items-center gap-2 p-4 bg-rose-50 border border-rose-200 text-rose-700 dark:bg-rose-500/10 dark:border-rose-500/20 dark:text-rose-400 rounded-xl text-sm font-medium animate-in shake">
-                  <AlertCircle size={18} />
+                <div className="flex items-center gap-2 p-3.5 bg-rose-50 border border-rose-200 text-rose-700 rounded-lg text-xs font-semibold">
+                  <AlertCircle size={16} />
                   {error}
                 </div>
               )}
               
               {successMessage && (
-                <div className="flex items-center gap-2 p-4 bg-emerald-50 border border-emerald-200 text-emerald-700 dark:bg-emerald-500/10 dark:border-emerald-500/20 dark:text-emerald-400 rounded-xl text-sm font-medium animate-in fade-in">
-                  <AlertCircle size={18} />
+                <div className="flex items-center gap-2 p-3.5 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-lg text-xs font-semibold">
+                  <AlertCircle size={16} />
                   {successMessage}
                 </div>
               )}
               
-              <div className="space-y-6 bg-slate-50 dark:bg-slate-900/50 p-6 rounded-2xl border border-slate-100 dark:border-slate-700/50">
+              <div className="space-y-4 bg-slate-50 p-5 rounded-lg border border-slate-200">
                 <div>
-                  <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Quantity</label>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">Quantity to Update</label>
                   <input 
                     type="number" 
                     min="1"
@@ -246,19 +242,19 @@ export default function StockManagement() {
                     disabled={subVariants.length === 0}
                     value={quantity}
                     onChange={(e) => setQuantity(e.target.value)}
-                    className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/50 text-xl font-bold shadow-sm disabled:opacity-50"
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-slate-400 text-base font-extrabold bg-white text-slate-900"
                     placeholder="0"
                   />
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Remarks / Reference</label>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">Remarks / Reference</label>
                   <textarea 
                     rows={3}
                     disabled={subVariants.length === 0}
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
-                    className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/50 resize-none text-sm shadow-sm disabled:opacity-50"
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-slate-400 text-sm bg-white text-slate-900 resize-none"
                     placeholder="e.g. PO-20234 or Invoice #4092"
                   />
                 </div>
@@ -267,16 +263,16 @@ export default function StockManagement() {
               <button 
                 type="submit" 
                 disabled={submitting || subVariants.length === 0}
-                className={`w-full flex items-center justify-center gap-2 px-4 py-4 rounded-xl font-bold text-lg text-white transition-all shadow-lg hover:-translate-y-0.5 disabled:opacity-50 disabled:hover:translate-y-0 ${transactionType === 'IN' ? 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-500/30' : 'bg-rose-600 hover:bg-rose-700 shadow-rose-500/30'}`}
+                className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-bold text-xs uppercase tracking-wider text-white transition-colors shadow-sm disabled:opacity-50 ${transactionType === 'IN' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-rose-600 hover:bg-rose-700'}`}
               >
-                {submitting ? <Loader2 className="animate-spin" /> : <Save size={20} />}
+                {submitting ? <Loader2 className="animate-spin" size={14} /> : <Save size={14} />}
                 Confirm {transactionType === 'IN' ? 'Stock In' : 'Stock Out'}
               </button>
             </form>
           ) : (
-            <div className="h-full flex flex-col items-center justify-center text-slate-400 space-y-4">
-              <Search size={48} className="opacity-20" />
-              <p>Select a product to update stock</p>
+            <div className="h-full flex flex-col items-center justify-center text-slate-400 space-y-3 py-16">
+              <Search size={40} className="opacity-30" />
+              <p className="text-sm font-semibold">Select a product from the list to manage stock</p>
             </div>
           )}
         </div>

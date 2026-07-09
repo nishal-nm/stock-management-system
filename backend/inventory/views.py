@@ -1,4 +1,6 @@
 from django.http import Http404
+import logging
+logger = logging.getLogger('inventory')
 from django.db.models import Sum
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter
@@ -39,7 +41,8 @@ class CategoryList(APIView):
     def post(self, request):
         serializer = CategorySerializer(data=request.data, context={'request': request})
         if serializer.is_valid():
-            serializer.save()
+            category = serializer.save()
+            logger.info(f"Category created: '{category.name}' (ID: {category.id})")
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -67,12 +70,15 @@ class CategoryDetail(APIView):
         serializer = CategorySerializer(category, data=request.data, partial=partial, context={'request': request})
         if serializer.is_valid():
             serializer.save()
+            logger.info(f"Category updated: '{category.name}' (ID: {category.id}, partial={partial})")
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, pk):
         category = self.get_object(pk)
+        category_name = category.name
         category.delete()
+        logger.info(f"Category deleted: '{category_name}' (ID: {pk})")
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
@@ -108,6 +114,7 @@ class ProductList(APIView):
         serializer = ProductWriteSerializer(data=request.data, context={'request': request})
         if serializer.is_valid():
             product = serializer.save(CreatedUser=request.user)
+            logger.info(f"Product created: '{product.ProductName}' (ID: {product.id}) by user '{request.user.username}'")
             read_serializer = ProductReadSerializer(product, context={'request': request})
             return Response(read_serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -140,14 +147,18 @@ class ProductDetail(APIView):
         serializer = ProductWriteSerializer(product, data=request.data, partial=partial, context={'request': request})
         if serializer.is_valid():
             product = serializer.save()
+            logger.info(f"Product updated: '{product.ProductName}' (ID: {product.id}, partial={partial})")
             read_serializer = ProductReadSerializer(product, context={'request': request})
             return Response(read_serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, pk):
+        if not request.user.is_staff:
+            return Response({"detail": "You do not have permission to perform this action."}, status=status.HTTP_403_FORBIDDEN)
         product = self.get_object(pk)
         product.Active = False
         product.save(update_fields=["Active"])
+        logger.info(f"Product soft-deleted: '{product.ProductName}' (ID: {pk})")
         return Response(
             {
                 "success": True,
@@ -175,7 +186,7 @@ class ProductDashboard(APIView):
         top_products = Products.objects.filter(Active=True).order_by('-TotalStock')[:5].values('id', 'ProductName', 'TotalStock')
         
         # Recent 10 transactions
-        recent_transactions = StockTransaction.objects.select_related('sub_variant', 'sub_variant__product').order_by('-created_at')[:10]
+        recent_transactions = StockTransaction.objects.select_related('sub_variant', 'sub_variant__product').filter(sub_variant__product__Active=True).order_by('-created_at')[:10]
         
         # Low Stock count (Subvariants with stock <= low_stock_threshold)
         low_stock_count = SubVariant.objects.filter(
@@ -185,14 +196,15 @@ class ProductDashboard(APIView):
         
         # Today's transaction count
         today = timezone.now().date()
-        transactions_today = StockTransaction.objects.filter(created_at__date=today).count()
+        transactions_today = StockTransaction.objects.filter(created_at__date=today, sub_variant__product__Active=True).count()
         
         # Calculate last 7 days cumulative stock level
         end_date = today
         start_date = end_date - datetime.timedelta(days=6)
         
         range_transactions = StockTransaction.objects.filter(
-            created_at__date__range=[start_date, end_date]
+            created_at__date__range=[start_date, end_date],
+            sub_variant__product__Active=True
         ).annotate(date=TruncDate('created_at')).values('date', 'transaction_type').annotate(total=Sum('quantity'))
         
         tx_map = {}
@@ -221,7 +233,7 @@ class ProductDashboard(APIView):
         serialized_recent_txs = []
         for tx in recent_transactions:
             serialized_recent_txs.append({
-                'id': f"TX-{str(tx.id)[:6].upper()}",
+                'id': f"TX-{str(tx.id).split('-')[0].upper()}",
                 'type': tx.transaction_type,
                 'product': f"{tx.sub_variant.product.ProductName} ({tx.sub_variant.name})",
                 'qty': float(tx.quantity),
@@ -411,7 +423,8 @@ class StockPurchase(APIView):
             context={'request': request, 'transaction_type': 'IN'}
         )
         if serializer.is_valid():
-            serializer.save()
+            transaction = serializer.save()
+            logger.info(f"Stock PURCHASE (IN) transaction recorded: {transaction.quantity} units added to SubVariant '{transaction.sub_variant.name}' (ID: {transaction.sub_variant.id})")
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -423,14 +436,17 @@ class StockSale(APIView):
             context={'request': request, 'transaction_type': 'OUT'}
         )
         if serializer.is_valid():
-            serializer.save()
+            transaction = serializer.save()
+            logger.info(f"Stock SALE (OUT) transaction recorded: {transaction.quantity} units deducted from SubVariant '{transaction.sub_variant.name}' (ID: {transaction.sub_variant.id})")
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class StockReport(APIView):
     def get(self, request):
-        queryset = StockTransaction.objects.select_related('sub_variant', 'sub_variant__product').order_by('-created_at')
+        if not request.user.is_staff:
+            return Response({"detail": "You do not have permission to perform this action."}, status=status.HTTP_403_FORBIDDEN)
+        queryset = StockTransaction.objects.select_related('sub_variant', 'sub_variant__product').filter(sub_variant__product__Active=True).order_by('-created_at')
         
         start_date = request.query_params.get('start_date')
         end_date = request.query_params.get('end_date')

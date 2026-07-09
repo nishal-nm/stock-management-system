@@ -15,7 +15,7 @@ export default function Categories() {
 
   // Add/Edit modal states
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editCategory, setEditCategory] = useState(null); // null means adding new category
+  const [editCategory, setEditCategory] = useState(null);
   const [categoryName, setCategoryName] = useState('');
   const [categoryDesc, setCategoryDesc] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -41,6 +41,7 @@ export default function Categories() {
     } catch (err) {
       console.error('Failed to fetch category products:', err);
     } finally {
+      setViewProducts(response.data.results || response.data || []);
       setLoadingProducts(false);
     }
   };
@@ -130,10 +131,10 @@ export default function Categories() {
   };
 
   return (
-    <div className="space-y-6 pb-8">
+    <div className="space-y-6 pb-12 font-sans antialiased text-slate-800">
       <AlertModal 
         isOpen={alertConfig.isOpen}
-        onClose={() => setAlertConfig({ ...alertConfig, isOpen: false })}
+        onClose={() => setAlertConfig(prev => ({ ...prev, isOpen: false }))}
         title={alertConfig.title}
         message={alertConfig.message}
         type={alertConfig.type}
@@ -150,22 +151,22 @@ export default function Categories() {
 
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Categories</h1>
-          <p className="text-slate-500 dark:text-slate-400 mt-1">Manage categories for classifying your products.</p>
+          <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">Categories</h1>
+          <p className="text-slate-500 text-sm mt-0.5">Manage categories for classifying your products.</p>
         </div>
         <button 
           onClick={handleOpenAddModal}
-          className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-medium transition-all shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/50 transform hover:-translate-y-0.5"
+          className="flex items-center gap-2 px-4 py-2.5 bg-slate-950 hover:bg-slate-800 text-white rounded-lg font-bold text-xs uppercase tracking-wider shadow-sm transition-colors"
         >
-          <Plus size={20} />
+          <Plus size={16} />
           Add Category
         </button>
       </div>
 
-      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
-        <div className="p-5 border-b border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row gap-4 justify-between items-center bg-slate-50/50 dark:bg-slate-800/50">
-          <div className="relative w-full sm:w-96 group">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors" size={20} />
+      <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+        <div className="p-4 border-b border-slate-200 flex flex-col sm:flex-row gap-4 justify-between items-center bg-slate-50">
+          <div className="relative w-full sm:w-80 group">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
             <input 
               type="text" 
               placeholder="Search categories..." 
@@ -174,7 +175,7 @@ export default function Categories() {
                 setSearchTerm(e.target.value);
                 setPage(1);
               }}
-              className="w-full pl-11 pr-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all text-sm shadow-sm"
+              className="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-slate-400 text-sm shadow-sm"
             />
           </div>
         </div>
@@ -182,46 +183,46 @@ export default function Categories() {
         <div className="overflow-x-auto min-h-[300px]">
           {loading ? (
             <div className="flex items-center justify-center h-64">
-              <Loader2 className="animate-spin text-indigo-500" size={32} />
+              <Loader2 className="animate-spin text-slate-900" size={32} />
             </div>
           ) : (
             <table className="w-full text-sm text-left">
-              <thead className="text-xs text-slate-500 uppercase bg-slate-50 dark:bg-slate-800/80 dark:text-slate-400 border-b border-slate-200 dark:border-slate-700">
+              <thead className="text-xs text-slate-500 uppercase bg-slate-50 border-b border-slate-200">
                 <tr>
-                  <th className="px-6 py-4 font-semibold tracking-wider">Category Name</th>
-                  <th className="px-6 py-4 font-semibold tracking-wider">Description</th>
-                  <th className="px-6 py-4 font-semibold tracking-wider text-center">Products Count</th>
-                  <th className="px-6 py-4 font-semibold tracking-wider text-right">Actions</th>
+                  <th className="px-5 py-3 font-bold tracking-wider">Category Name</th>
+                  <th className="px-5 py-3 font-bold tracking-wider">Description</th>
+                  <th className="px-5 py-3 font-bold tracking-wider text-center">Products Count</th>
+                  <th className="px-5 py-3 font-bold tracking-wider text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
+              <tbody className="divide-y divide-slate-100">
                 {categories.length === 0 ? (
                   <tr>
-                    <td colSpan="4" className="px-6 py-8 text-center text-slate-500">
+                    <td colSpan="4" className="px-5 py-8 text-center text-slate-400">
                       No categories found. Click 'Add Category' to create one.
                     </td>
                   </tr>
                 ) : categories.map((cat) => (
-                  <tr key={cat.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-700/30 transition-colors group">
-                    <td className="px-6 py-4 font-semibold text-slate-900 dark:text-white">
+                  <tr key={cat.id} className="hover:bg-slate-50 transition-colors">
+                    <td className="px-5 py-3 font-semibold text-slate-900">
                       {cat.name}
                     </td>
-                    <td className="px-6 py-4 text-slate-600 dark:text-slate-300">
-                      {cat.description || <span className="text-slate-400 dark:text-slate-500 italic">No description</span>}
+                    <td className="px-5 py-3 text-slate-600">
+                      {cat.description || <span className="text-slate-400 italic text-xs">No description</span>}
                     </td>
-                    <td className="px-6 py-4 text-center font-bold text-indigo-600 dark:text-indigo-400">
+                    <td className="px-5 py-3 text-center font-bold text-slate-900 bg-slate-50 border-l border-r border-slate-100 w-32">
                       {cat.products_count ?? 0}
                     </td>
-                    <td className="px-6 py-4 text-right">
-                      <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button onClick={() => handleViewCategory(cat)} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-500/20 rounded-lg transition-all" title="View Products">
-                          <Eye size={18} />
+                    <td className="px-5 py-3 text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <button onClick={() => handleViewCategory(cat)} className="p-1.5 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors" title="View Products">
+                          <Eye size={16} />
                         </button>
-                        <button onClick={() => handleOpenEditModal(cat)} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-500/20 rounded-lg transition-all" title="Edit">
-                          <Edit size={18} />
+                        <button onClick={() => handleOpenEditModal(cat)} className="p-1.5 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors" title="Edit">
+                          <Edit size={16} />
                         </button>
-                        <button onClick={() => handleDelete(cat.id)} className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/20 rounded-lg transition-all" title="Delete">
-                          <Trash2 size={18} />
+                        <button onClick={() => handleDelete(cat.id)} className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors" title="Delete">
+                          <Trash2 size={16} />
                         </button>
                       </div>
                     </td>
@@ -233,7 +234,7 @@ export default function Categories() {
         </div>
 
         {totalPages > 1 && (
-          <div className="p-4 border-t border-slate-200 dark:border-slate-700 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/50 text-xs font-semibold text-slate-500 dark:text-slate-400">
+          <div className="p-4 border-t border-slate-200 flex justify-between items-center bg-slate-50 text-xs font-bold text-slate-500">
             <div>
               Showing page {page} of {totalPages}
             </div>
@@ -241,14 +242,14 @@ export default function Categories() {
               <button 
                 onClick={() => setPage(prev => Math.max(prev - 1, 1))}
                 disabled={page === 1}
-                className="px-3 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm"
+                className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm"
               >
                 Previous
               </button>
               <button 
                 onClick={() => setPage(prev => Math.min(prev + 1, totalPages))}
                 disabled={page === totalPages}
-                className="px-3 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm"
+                className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm"
               >
                 Next
               </button>
@@ -257,23 +258,26 @@ export default function Categories() {
         )}
       </div>
 
-      {/* Add/Edit Modal */}
+      {/* Add / Edit Category Dialog */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-md shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden transform scale-100 transition-all">
-            <div className="p-6 border-b border-slate-100 dark:border-slate-700">
-              <h3 className="text-xl font-bold text-slate-900 dark:text-white">
-                {editCategory ? 'Edit Category' : 'Add New Category'}
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 animate-in fade-in duration-150">
+          <div className="bg-white rounded-lg border border-slate-200 shadow-lg max-w-md w-full overflow-hidden animate-in zoom-in-95 duration-150">
+            <div className="px-6 py-4 border-b border-slate-200 flex justify-between items-center bg-slate-50">
+              <h3 className="font-bold text-slate-950 text-base">
+                {editCategory ? 'Edit Category' : 'Create Category'}
               </h3>
-              <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-                {editCategory ? 'Modify the category details.' : 'Create a new category for organizing your products.'}
-              </p>
+              <button 
+                onClick={() => setIsModalOpen(false)}
+                className="text-slate-400 hover:text-slate-700 text-lg"
+              >
+                &times;
+              </button>
             </div>
             
             <form onSubmit={handleSaveCategory}>
               <div className="p-6 space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">
                     Category Name
                   </label>
                   <input 
@@ -281,39 +285,39 @@ export default function Categories() {
                     required
                     value={categoryName}
                     onChange={(e) => setCategoryName(e.target.value)}
-                    className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/50 text-sm"
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-slate-400 text-sm bg-white"
                     placeholder="e.g. Clothing, Accessories"
                   />
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">
                     Description
                   </label>
                   <textarea 
                     rows={4}
                     value={categoryDesc}
                     onChange={(e) => setCategoryDesc(e.target.value)}
-                    className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/50 text-sm resize-none"
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-slate-400 text-sm bg-white resize-none"
                     placeholder="Optional details about this category..."
                   />
                 </div>
               </div>
               
-              <div className="px-6 py-4 bg-slate-50 dark:bg-slate-800/80 border-t border-slate-100 dark:border-slate-700 flex justify-end gap-3">
+              <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex justify-end gap-3">
                 <button 
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-900 text-slate-700 dark:text-slate-300 rounded-xl font-semibold text-sm transition-all shadow-sm"
+                  className="px-4 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-lg font-semibold text-xs shadow-sm"
                 >
                   Cancel
                 </button>
                 <button 
                   type="submit"
                   disabled={submitting}
-                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold text-sm transition-all shadow-md shadow-indigo-500/20 hover:shadow-indigo-500/40 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
+                  className="px-4 py-2 bg-slate-950 hover:bg-slate-800 text-white rounded-lg font-bold text-xs uppercase tracking-wider shadow-sm disabled:opacity-50 flex items-center gap-1.5"
                 >
-                  {submitting && <Loader2 size={16} className="animate-spin" />}
+                  {submitting && <Loader2 size={12} className="animate-spin" />}
                   {editCategory ? 'Save Changes' : 'Create Category'}
                 </button>
               </div>
@@ -324,16 +328,16 @@ export default function Categories() {
 
       {/* View Category Products Modal */}
       {viewCategory && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
-          <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 max-w-2xl w-full border border-slate-200 dark:border-slate-700 shadow-2xl animate-in zoom-in-95 duration-300 flex flex-col max-h-[80vh]">
-            <div className="flex justify-between items-center mb-4 border-b border-slate-100 dark:border-slate-700 pb-3">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 animate-in fade-in duration-150">
+          <div className="bg-white rounded-lg p-5 max-w-2xl w-full border border-slate-200 shadow-lg animate-in zoom-in-95 duration-150 flex flex-col max-h-[80vh]">
+            <div className="flex justify-between items-center mb-4 border-b border-slate-200 pb-3">
               <div>
-                <h3 className="text-xl font-bold text-slate-900 dark:text-white">{viewCategory.name} Products</h3>
-                <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">{viewCategory.description || 'No description provided.'}</p>
+                <h3 className="text-base font-bold text-slate-950">{viewCategory.name} Products</h3>
+                <p className="text-xs text-slate-500 mt-1">{viewCategory.description || 'No description provided.'}</p>
               </div>
               <button 
                 onClick={() => setViewCategory(null)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                className="text-slate-400 hover:text-slate-700 text-lg"
               >
                 &times;
               </button>
@@ -342,33 +346,33 @@ export default function Categories() {
             <div className="flex-1 overflow-y-auto min-h-[200px] py-2 custom-scrollbar">
               {loadingProducts ? (
                 <div className="flex flex-col items-center justify-center py-12">
-                  <Loader2 className="animate-spin text-indigo-500 mb-2" size={32} />
-                  <span className="text-sm text-slate-500 dark:text-slate-400">Loading products...</span>
+                  <Loader2 className="animate-spin text-slate-900 mb-2" size={24} />
+                  <span className="text-xs text-slate-500">Loading products...</span>
                 </div>
               ) : viewProducts.length === 0 ? (
-                <div className="text-center py-12 text-slate-500 dark:text-slate-400">
+                <div className="text-center py-12 text-slate-400 text-sm">
                   No active products found in this category.
                 </div>
               ) : (
-                <div className="space-y-3 animate-in fade-in duration-350">
+                <div className="space-y-3">
                   <table className="w-full text-sm text-left">
-                    <thead className="text-xs text-slate-500 uppercase bg-slate-50 dark:bg-slate-700/50">
+                    <thead className="text-xs text-slate-500 uppercase bg-slate-50 border-b border-slate-200">
                       <tr>
-                        <th className="px-4 py-2">Product Name</th>
-                        <th className="px-4 py-2">Code</th>
-                        <th className="px-4 py-2 text-right">Stock</th>
+                        <th className="px-3 py-2 font-bold">Product Name</th>
+                        <th className="px-3 py-2 font-bold">Code</th>
+                        <th className="px-3 py-2 font-bold text-right">Stock</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
+                    <tbody className="divide-y divide-slate-100">
                       {viewProducts.map(prod => (
-                        <tr key={prod.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/20">
-                          <td className="px-4 py-3 font-semibold text-slate-900 dark:text-white">
+                        <tr key={prod.id} className="hover:bg-slate-50">
+                          <td className="px-3 py-2.5 font-semibold text-slate-900">
                             {prod.ProductName}
                           </td>
-                          <td className="px-4 py-3 text-slate-500 dark:text-slate-400">
+                          <td className="px-3 py-2.5 text-slate-500">
                             {prod.ProductCode}
                           </td>
-                          <td className="px-4 py-3 text-right font-bold text-slate-900 dark:text-white">
+                          <td className="px-3 py-2.5 text-right font-bold text-slate-900">
                             {parseFloat(prod.TotalStock).toFixed(0)}
                           </td>
                         </tr>
@@ -379,10 +383,10 @@ export default function Categories() {
               )}
             </div>
 
-            <div className="flex justify-end mt-6 border-t border-slate-100 dark:border-slate-700 pt-4">
+            <div className="flex justify-end mt-4 border-t border-slate-200 pt-3">
               <button
                 onClick={() => setViewCategory(null)}
-                className="px-5 py-2.5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-semibold rounded-xl transition-all"
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs rounded-lg transition-colors"
               >
                 Close
               </button>
