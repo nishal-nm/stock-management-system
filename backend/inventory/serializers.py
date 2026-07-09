@@ -70,7 +70,7 @@ class ProductWriteSerializer(serializers.ModelSerializer):
         import json
         data_copy = data.copy() if hasattr(data, 'copy') else dict(data)
         
-        # Support both 'name' (from doc spec) and 'ProductName'
+        # Support both 'name' and 'ProductName'
         if 'name' in data_copy:
             data_copy['ProductName'] = data_copy.pop('name')
             
