@@ -14,9 +14,11 @@ class CategorySerializer(serializers.ModelSerializer):
         return obj.products.filter(Active=True).count()
 
 class VariantOptionSerializer(serializers.ModelSerializer):
+    variant_name = serializers.CharField(source='variant.name', read_only=True)
+
     class Meta:
         model = VariantOption
-        fields = ['id', 'value']
+        fields = ['id', 'variant_name', 'value']
 
 class ProductVariantSerializer(serializers.ModelSerializer):
     options = VariantOptionSerializer(many=True, required=False)
@@ -98,7 +100,11 @@ class SubVariantSerializer(serializers.ModelSerializer):
 
 class StockTransactionSerializer(serializers.ModelSerializer):
     product_name = serializers.CharField(source='sub_variant.product.ProductName', read_only=True)
-    sub_variant_name = serializers.CharField(source='sub_variant.name', read_only=True)
+    sub_variant_name = serializers.SerializerMethodField()
+
+    def get_sub_variant_name(self, obj):
+        opts = obj.sub_variant.options.select_related('variant').all()
+        return ' • '.join(f"{o.variant.name}: {o.value}" for o in opts) or obj.sub_variant.name
 
     class Meta:
         model = StockTransaction

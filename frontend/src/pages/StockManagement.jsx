@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ArrowDownToLine, ArrowUpFromLine, Search, AlertCircle, Save, Loader2 } from 'lucide-react';
 import client from '../api/client';
 import AlertModal from '../components/AlertModal';
+import SubVariantLabel from '../components/SubVariantLabel';
 
 export default function StockManagement() {
   const [products, setProducts] = useState([]);
@@ -11,6 +12,7 @@ export default function StockManagement() {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [subVariants, setSubVariants] = useState([]);
   const [selectedSubVariant, setSelectedSubVariant] = useState(null);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
   
   const [transactionType, setTransactionType] = useState('IN');
   const [quantity, setQuantity] = useState('');
@@ -23,6 +25,11 @@ export default function StockManagement() {
   
   const [alertConfig, setAlertConfig] = useState({ isOpen: false, title: '', message: '', type: 'info' });
   const [successMessage, setSuccessMessage] = useState('');
+
+  const getSubVariantLabelText = (sv) => {
+    if (!sv || !sv.options) return '';
+    return sv.options.map(o => o.variant_name ? `${o.variant_name}: ${o.value}` : o.value).join(' - ');
+  };
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -53,8 +60,15 @@ export default function StockManagement() {
     try {
       const response = await client.get(`/products/${productId}/subvariants/`);
       const svs = response.data.results || response.data;
-      setSubVariants(svs);
-      setSelectedSubVariant(svs.length > 0 ? svs[0] : null);
+      
+      const sorted = [...svs].sort((a, b) => {
+        const labelA = a.options.map(o => o.variant_name ? `${o.variant_name}: ${o.value}` : o.value).join(' - ');
+        const labelB = b.options.map(o => o.variant_name ? `${o.variant_name}: ${o.value}` : o.value).join(' - ');
+        return labelA.localeCompare(labelB);
+      });
+      
+      setSubVariants(sorted);
+      setSelectedSubVariant(sorted.length > 0 ? sorted[0] : null);
     } catch (err) {
       console.error("Failed to fetch subvariants:", err);
     } finally {
@@ -65,6 +79,7 @@ export default function StockManagement() {
   const handleProductSelect = (product) => {
     setSelectedProduct(product);
     setError('');
+    setDropdownOpen(false);
     fetchSubVariants(product.id);
   };
 
@@ -180,17 +195,57 @@ export default function StockManagement() {
                   ) : subVariants.length === 0 ? (
                     <div className="text-rose-600 text-xs font-semibold">This product has no sub-variants. Add variants first.</div>
                   ) : (
-                    <select
-                      value={selectedSubVariant ? selectedSubVariant.id : ''}
-                      onChange={(e) => setSelectedSubVariant(subVariants.find(sv => sv.id === e.target.value))}
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-slate-400 text-sm bg-white text-slate-900 font-medium"
-                    >
-                      {subVariants.map(sv => (
-                        <option key={sv.id} value={sv.id}>
-                          {sv.options.map(opt => opt.value).join(' - ')} (Current Stock: {parseFloat(sv.stock).toFixed(0)})
-                        </option>
-                      ))}
-                    </select>
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={() => setDropdownOpen(!dropdownOpen)}
+                        className="w-full flex items-center justify-between px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white text-slate-900 font-semibold focus:outline-none focus:border-slate-400 shadow-sm"
+                      >
+                        <span>
+                          {selectedSubVariant ? getSubVariantLabelText(selectedSubVariant) : 'Select a variant'}
+                        </span>
+                        <span className="flex items-center gap-2 text-xs text-slate-500">
+                          {selectedSubVariant && `(Stock: ${parseFloat(selectedSubVariant.stock).toFixed(0)})`}
+                          <span className="transform transition-transform duration-200 select-none">
+                            {dropdownOpen ? '▲' : '▼'}
+                          </span>
+                        </span>
+                      </button>
+
+                      {dropdownOpen && (
+                        <div className="absolute z-30 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-60 overflow-y-auto py-1 animate-in fade-in duration-100">
+                          {subVariants.map((sv) => {
+                            const isSelected = selectedSubVariant?.id === sv.id;
+                            return (
+                              <button
+                                key={sv.id}
+                                type="button"
+                                onClick={() => {
+                                  setSelectedSubVariant(sv);
+                                  setDropdownOpen(false);
+                                }}
+                                className={`w-full text-left px-4 py-2.5 text-xs font-semibold flex justify-between items-center transition-colors border-b border-slate-50 last:border-0 ${
+                                  isSelected 
+                                    ? 'bg-slate-900 text-white' 
+                                    : 'hover:bg-slate-50 bg-white text-slate-800'
+                                }`}
+                              >
+                                <span>{getSubVariantLabelText(sv)}</span>
+                                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${
+                                  isSelected 
+                                    ? 'bg-slate-800 border-slate-700 text-slate-300' 
+                                    : parseFloat(sv.stock) <= 0 
+                                      ? 'bg-rose-50 border-rose-200 text-rose-700' 
+                                      : 'bg-slate-100 border-slate-200 text-slate-600'
+                                }`}>
+                                  {parseFloat(sv.stock).toFixed(0)} units
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
                   )}
                 </div>
               </div>

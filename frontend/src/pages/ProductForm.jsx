@@ -3,6 +3,7 @@ import { Upload, Plus, Trash2, Save, X } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import client from '../api/client';
 import AlertModal from '../components/AlertModal';
+import SubVariantLabel from '../components/SubVariantLabel';
 
 export default function ProductForm() {
   const navigate = useNavigate();
@@ -383,7 +384,17 @@ export default function ProductForm() {
                     <tbody className="divide-y divide-slate-100">
                       {subVariants.map((sv, idx) => (
                         <tr key={idx} className="hover:bg-slate-50">
-                          <td className="px-4 py-3 font-semibold text-slate-900">{sv.name}</td>
+                          <td className="px-4 py-3 align-middle">
+                            <SubVariantLabel
+                              options={Object.entries(sv.options).map(([vName, val], i) => ({
+                                id: `${sv.id}-${i}`,
+                                variant_name: vName,
+                                value: val,
+                              }))}
+                              mode="pills"
+                              fallback={sv.name}
+                            />
+                          </td>
                           <td className="px-4 py-3">
                             <input type="text" defaultValue={sv.sku} className="w-full px-2 py-1 bg-white border border-slate-200 rounded focus:outline-none focus:border-slate-400 text-xs font-semibold" />
                           </td>

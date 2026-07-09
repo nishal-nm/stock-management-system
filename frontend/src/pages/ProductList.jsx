@@ -4,6 +4,7 @@ import { Search, Plus, Eye, Edit, Trash2, Loader2 } from 'lucide-react';
 import client from '../api/client';
 import ConfirmModal from '../components/ConfirmModal';
 import AlertModal from '../components/AlertModal';
+import SubVariantLabel from '../components/SubVariantLabel';
 
 export default function ProductList() {
   const [products, setProducts] = useState([]);
@@ -88,10 +89,16 @@ export default function ProductList() {
         client.get(`/products/${product.id}/variants/`),
         client.get(`/products/${product.id}/subvariants/`)
       ]);
+      const svs = subvariantsRes.data.results || subvariantsRes.data || [];
+      const sorted = [...svs].sort((a, b) => {
+        const labelA = a.options.map(o => o.variant_name ? `${o.variant_name}: ${o.value}` : o.value).join(' - ');
+        const labelB = b.options.map(o => o.variant_name ? `${o.variant_name}: ${o.value}` : o.value).join(' - ');
+        return labelA.localeCompare(labelB);
+      });
       setProductDetails({
         ...product,
         variants: variantsRes.data.results || variantsRes.data || [],
-        subvariants: subvariantsRes.data.results || subvariantsRes.data || []
+        subvariants: sorted
       });
     } catch (err) {
       console.error('Failed to load variants details:', err);
@@ -317,12 +324,12 @@ export default function ProductList() {
                               const lowStock = sv.low_stock_threshold && parseFloat(sv.stock) <= parseFloat(sv.low_stock_threshold);
                               return (
                                 <tr key={sv.id} className="hover:bg-slate-50">
-                                  <td className="px-3 py-2 flex flex-wrap gap-1">
-                                    {sv.options.map(opt => (
-                                      <span key={opt.id} className="bg-slate-100 border border-slate-200 px-1.5 py-0.5 rounded font-medium text-[10px]">
-                                        {opt.value}
-                                      </span>
-                                    ))}
+                                  <td className="px-3 py-2 align-middle">
+                                    <SubVariantLabel
+                                      options={sv.options}
+                                      mode="pills"
+                                      fallback={sv.name}
+                                    />
                                   </td>
                                   <td className="px-3 py-2 font-bold text-slate-900">
                                     {parseFloat(sv.stock).toFixed(0)}

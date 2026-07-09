@@ -232,10 +232,12 @@ class ProductDashboard(APIView):
         
         serialized_recent_txs = []
         for tx in recent_transactions:
+            opts = tx.sub_variant.options.select_related('variant').all()
+            sv_label = ' • '.join(f"{o.variant.name}: {o.value}" for o in opts) or tx.sub_variant.name
             serialized_recent_txs.append({
                 'id': f"TX-{str(tx.id).split('-')[0].upper()}",
                 'type': tx.transaction_type,
-                'product': f"{tx.sub_variant.product.ProductName} ({tx.sub_variant.name})",
+                'product': f"{tx.sub_variant.product.ProductName} ({sv_label})",
                 'qty': float(tx.quantity),
                 'date': tx.created_at.strftime('%Y-%m-%d'),
             })
