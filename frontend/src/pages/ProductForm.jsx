@@ -4,6 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import client from '../api/client';
 import AlertModal from '../components/AlertModal';
 import SubVariantLabel from '../components/SubVariantLabel';
+import { useCategories } from '../hooks/useCategories';
 
 export default function ProductForm() {
   const navigate = useNavigate();
@@ -12,11 +13,13 @@ export default function ProductForm() {
 
   const [formData, setFormData] = useState({
     name: '',
+    code: '',
+    hsnCode: '',
     category: '',
-    price: '',
-    description: '',
+    isActive: true,
   });
   
+  const [fieldErrors, setFieldErrors] = useState({});
   const [image, setImage] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   
@@ -25,20 +28,8 @@ export default function ProductForm() {
   ]);
   
   const [subVariants, setSubVariants] = useState([]);
-  const [categories, setCategories] = useState([]);
-  const [alertConfig, setAlertConfig] = useState({ isOpen: false, title: '', message: '', type: 'info' });
-
-  useEffect(() => {
-    const fetchCategories = async () => {
-      try {
-        const res = await client.get('/categories/?page_size=100');
-        setCategories(res.data.results || res.data || []);
-      } catch (err) {
-        console.error('Failed to fetch categories:', err);
-      }
-    };
-    fetchCategories();
-  }, []);
+  const { categories } = useCategories();
+  const [alertConfig, setAlertConfig] = useState({ isOpen: false, title: '', message: '', type: 'info', onCloseCallback: null });
 
   useEffect(() => {
     if (isEditMode) {
@@ -51,12 +42,13 @@ export default function ProductForm() {
           const product = productRes.data;
           setFormData({
             name: product.ProductName,
-            description: product.description || '',
+            code: product.ProductCode || '',
+            hsnCode: product.HSNCode || '',
             category: product.Category || '',
-            price: product.price || '',
+            isActive: product.Active,
           });
-          if (product.ProductImage) {
-            setImagePreview(product.ProductImage);
+          if (product.ProductImage?.medium) {
+            setImagePreview(product.ProductImage.medium);
           }
           
           const fetchedVariants = (variantsRes.data.results || variantsRes.data).map(v => ({
@@ -72,7 +64,7 @@ export default function ProductForm() {
           }
         } catch (err) {
           console.error(err);
-          setAlertConfig({ isOpen: true, title: 'Error', message: 'Failed to load product details.', type: 'error' });
+          setAlertConfig({ isOpen: true, title: 'Error', message: 'Failed to load product details.', type: 'error', onCloseCallback: null });
         }
       };
       fetchProductDetails();
@@ -113,9 +105,7 @@ export default function ProductForm() {
         id: `temp-${index}`,
         name,
         options: combo,
-        price_offset: 0,
-        stock: 0,
-        sku: `SKU-${Math.floor(Math.random() * 10000)}`
+        stock: 0
       };
     });
     
@@ -163,66 +153,76 @@ export default function ProductForm() {
 
   const handleSave = async (e) => {
     e.preventDefault();
+    setFieldErrors({});
 
-    const variantNames = variants.map(v => v.name.trim().toLowerCase()).filter(n => n);
-    const uniqueNames = new Set(variantNames);
-    if (uniqueNames.size !== variantNames.length) {
-      setAlertConfig({ isOpen: true, title: 'Validation Error', message: 'You cannot add multiple variants with the same name. Please ensure all variant names are unique.', type: 'error' });
+    const errors = {};
+
+    if (!formData.name.trim()) errors.name = 'Product Name is required.';
+    if (!formData.code.trim()) errors.code = 'Product Code is required.';
+
+    const variantNames = variants.map(v => v.name.trim()).filter(n => n);
+    if (variantNames.length !== variants.length) {
+      errors.variants = 'All variants must have a name.';
+    } else {
+      const uniqueNames = new Set(variantNames.map(n => n.toLowerCase()));
+      if (uniqueNames.size !== variantNames.length) {
+        errors.variants = 'Variant names must be unique.';
+      } else {
+        const invalidOptions = variants.some(v => v.options.length === 0);
+        if (invalidOptions) {
+          errors.variants = 'Each variant must have at least one option value.';
+        }
+      }
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
       return;
     }
 
     try {
       const formDataToSend = new FormData();
       formDataToSend.append('ProductName', formData.name);
-      formDataToSend.append('Active', 'true');
+      formDataToSend.append('ProductCode', formData.code);
+      if (formData.hsnCode) {
+        formDataToSend.append('HSNCode', formData.hsnCode);
+      }
+      formDataToSend.append('Active', formData.isActive ? 'true' : 'false');
       if (formData.category) {
         formDataToSend.append('Category', formData.category);
-      }
-      
-      if (!isEditMode) {
-        const pid = Math.floor(Math.random() * 1000000);
-        formDataToSend.append('ProductID', pid);
-        formDataToSend.append('ProductCode', `PRD-${pid}`);
       }
       
       if (image && typeof image !== 'string') {
         formDataToSend.append('ProductImage', image);
       }
+
+      // Serialize variants in a single consolidated parameter
+      const variantsPayload = variants.map(v => ({
+        name: v.name,
+        options: v.options
+      }));
+      formDataToSend.append('variants', JSON.stringify(variantsPayload));
       
-      let productId;
       if (isEditMode) {
         await client.patch(`/products/${id}/`, formDataToSend, {
           headers: { 'Content-Type': 'multipart/form-data' }
         });
-        productId = id;
       } else {
-        const productRes = await client.post('/products/', formDataToSend, {
+        await client.post('/products/', formDataToSend, {
           headers: { 'Content-Type': 'multipart/form-data' }
         });
-        productId = productRes.data.id;
       }
 
-      for (const variant of variants) {
-        if (variant.name && variant.options.length > 0) {
-          const optionsPayload = variant.options.map(opt => ({ value: opt }));
-          if (variant.id) {
-            await client.put(`/variants/${variant.id}/`, {
-              product: productId,
-              name: variant.name,
-              options: optionsPayload
-            });
-          } else {
-            await client.post(`/products/${productId}/variants/`, {
-              name: variant.name,
-              options: optionsPayload
-            });
-          }
-        }
-      }
-      navigate('/products');
+      setAlertConfig({ 
+        isOpen: true, 
+        title: 'Success', 
+        message: 'Product saved successfully!', 
+        type: 'success', 
+        onCloseCallback: () => navigate('/products') 
+      });
     } catch (err) {
       console.error(err);
-      setAlertConfig({ isOpen: true, title: 'Error', message: 'Failed to save product: ' + (err.response?.data ? JSON.stringify(err.response.data) : err.message), type: 'error' });
+      setAlertConfig({ isOpen: true, title: 'Error', message: 'Failed to save product: ' + (err.response?.data ? JSON.stringify(err.response.data) : err.message), type: 'error', onCloseCallback: null });
     }
   };
 
@@ -230,7 +230,10 @@ export default function ProductForm() {
     <div className="max-w-5xl mx-auto space-y-6 pb-12 font-sans antialiased text-slate-800">
       <AlertModal 
         isOpen={alertConfig.isOpen}
-        onClose={() => setAlertConfig({ ...alertConfig, isOpen: false })}
+        onClose={() => {
+          setAlertConfig({ ...alertConfig, isOpen: false });
+          if (alertConfig.onCloseCallback) alertConfig.onCloseCallback();
+        }}
         title={alertConfig.title}
         message={alertConfig.message}
         type={alertConfig.type}
@@ -257,49 +260,51 @@ export default function ProductForm() {
                     required
                     value={formData.name}
                     onChange={(e) => setFormData({...formData, name: e.target.value})}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-slate-400 text-sm bg-white text-slate-900"
+                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none text-sm bg-white text-slate-900 ${fieldErrors.name ? 'border-rose-500 focus:border-rose-500' : 'border-slate-200 focus:border-slate-400'}`}
                     placeholder="e.g. Premium Wireless Headphones"
                   />
+                  {fieldErrors.name && <p className="text-xs text-rose-600 mt-1 font-semibold">{fieldErrors.name}</p>}
                 </div>
                 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">Category</label>
-                    <select 
-                      value={formData.category}
-                      onChange={(e) => setFormData({...formData, category: e.target.value})}
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-slate-400 text-sm bg-white text-slate-900"
-                    >
-                      <option value="">Select Category</option>
-                      {categories.map((cat) => (
-                        <option key={cat.id} value={cat.id}>
-                          {cat.name}
-                        </option>
-                      ))}
-                    </select>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">Product Code</label>
+                    <input 
+                      type="text" 
+                      required
+                      value={formData.code}
+                      onChange={(e) => setFormData({...formData, code: e.target.value})}
+                      className={`w-full px-3 py-2 border rounded-lg focus:outline-none text-sm bg-white text-slate-900 ${fieldErrors.code ? 'border-rose-500 focus:border-rose-500' : 'border-slate-200 focus:border-slate-400'}`}
+                      placeholder="e.g. PRD-001"
+                    />
+                    {fieldErrors.code && <p className="text-xs text-rose-600 mt-1 font-semibold">{fieldErrors.code}</p>}
                   </div>
                   <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">Base Price (₹)</label>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">HSN Code</label>
                     <input 
-                      type="number" 
-                      required
-                      value={formData.price}
-                      onChange={(e) => setFormData({...formData, price: e.target.value})}
+                      type="text" 
+                      value={formData.hsnCode}
+                      onChange={(e) => setFormData({...formData, hsnCode: e.target.value})}
                       className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-slate-400 text-sm bg-white text-slate-900"
-                      placeholder="0.00"
+                      placeholder="e.g. 6205"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">Description</label>
-                  <textarea 
-                    rows={4}
-                    value={formData.description}
-                    onChange={(e) => setFormData({...formData, description: e.target.value})}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-slate-400 text-sm bg-white text-slate-900 resize-none"
-                    placeholder="Enter product description..."
-                  />
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">Category</label>
+                  <select 
+                    value={formData.category}
+                    onChange={(e) => setFormData({...formData, category: e.target.value})}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-slate-400 text-sm bg-white text-slate-900"
+                  >
+                    <option value="">Select Category</option>
+                    {categories.map((cat) => (
+                      <option key={cat.id} value={cat.id}>
+                        {cat.name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
             </div>
@@ -317,6 +322,11 @@ export default function ProductForm() {
               </div>
               
               <div className="space-y-4">
+                {fieldErrors.variants && (
+                  <div className="p-3 bg-rose-50 border border-rose-200 rounded-lg mb-4">
+                    <p className="text-xs text-rose-700 font-bold">{fieldErrors.variants}</p>
+                  </div>
+                )}
                 {variants.map((variant, vIndex) => (
                   <div key={vIndex} className="p-4 bg-slate-50 rounded-lg border border-slate-200 relative group">
                     <button 
@@ -377,8 +387,6 @@ export default function ProductForm() {
                     <thead className="text-slate-500 uppercase bg-slate-50 border-b border-slate-200">
                       <tr>
                         <th className="px-4 py-2.5 font-bold">Variant Combination</th>
-                        <th className="px-4 py-2.5 font-bold w-36">SKU</th>
-                        <th className="px-4 py-2.5 font-bold w-28">Price Offset</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
@@ -394,12 +402,6 @@ export default function ProductForm() {
                               mode="pills"
                               fallback={sv.name}
                             />
-                          </td>
-                          <td className="px-4 py-3">
-                            <input type="text" defaultValue={sv.sku} className="w-full px-2 py-1 bg-white border border-slate-200 rounded focus:outline-none focus:border-slate-400 text-xs font-semibold" />
-                          </td>
-                          <td className="px-4 py-3">
-                            <input type="number" defaultValue={sv.price_offset} className="w-full px-2 py-1 bg-white border border-slate-200 rounded focus:outline-none focus:border-slate-400 text-xs font-semibold" />
                           </td>
                         </tr>
                       ))}
@@ -437,6 +439,24 @@ export default function ProductForm() {
                     <input type="file" className="hidden" accept="image/*" onChange={handleImageChange} />
                   </label>
                 )}
+              </div>
+            </div>
+
+            <div className="bg-white rounded-lg p-5 border border-slate-200 shadow-sm">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-bold uppercase tracking-wider text-slate-700">Status</h3>
+                  <p className="text-xs text-slate-500 mt-1">Is this product active?</p>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input 
+                    type="checkbox" 
+                    className="sr-only peer"
+                    checked={formData.isActive}
+                    onChange={(e) => setFormData({...formData, isActive: e.target.checked})}
+                  />
+                  <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+                </label>
               </div>
             </div>
 

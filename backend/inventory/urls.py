@@ -4,8 +4,8 @@ from .views import (
     ProductList, ProductDetail, ProductDashboard,
     ProductVariantList, ProductVariantDetail,
     SubVariantList, SubVariantDetail,
-    StockTransactionList, StockTransactionDetail, StockReport,
-    StockPurchase, StockSale
+    StockTransactionDetail, StockReport,
+    StockPurchase, StockSale, SubVariantStockList
 )
 
 urlpatterns = [
@@ -27,7 +27,7 @@ urlpatterns = [
     path('subvariants/<uuid:pk>/', SubVariantDetail.as_view(), name='subvariant-detail'),
     
     # Stock Transactions
-    path('stock/', StockTransactionList.as_view(), name='stock-list'),
+    path('stock/', SubVariantStockList.as_view(), name='stock-list'),
     path('stock/report/', StockReport.as_view(), name='stock-report'),
     path('stock/purchase/', StockPurchase.as_view(), name='stock-purchase'),
     path('stock/sale/', StockSale.as_view(), name='stock-sale'),

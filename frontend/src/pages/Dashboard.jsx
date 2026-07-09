@@ -145,9 +145,7 @@ export default function Dashboard() {
                       <p className="text-xs text-slate-500">{product.stock.toLocaleString()} units</p>
                     </div>
                   </div>
-                  <div className="text-xs font-bold text-slate-900 bg-slate-100 border border-slate-200 px-2 py-1 rounded">
-                    ₹{product.value.toLocaleString()}
-                  </div>
+
                 </div>
               ))}
             </div>

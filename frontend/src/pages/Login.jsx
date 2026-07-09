@@ -19,17 +19,25 @@ export default function Login() {
     setLoading(true);
     try {
       const response = await client.post('/token/', { username, password });
-      dispatch(loginSuccess({ token: response.data.access, user: { username } }));
+      dispatch(loginSuccess({ 
+        token: response.data.access, 
+        isStaff: response.data.is_staff,
+        user: { username: response.data.username } 
+      }));
       navigate('/');
     } catch (err) {
-      setError(err.response?.data?.message || 'Invalid credentials');
+      setError(err.friendlyMessage || err.response?.data?.detail || 'Invalid credentials');
     } finally {
       setLoading(false);
     }
   };
 
   const handleTestLogin = () => {
-    dispatch(loginSuccess({ token: 'test-token', user: { name: 'Admin', email: 'admin@example.com' } }));
+    dispatch(loginSuccess({ 
+      token: 'test-token', 
+      isStaff: true, 
+      user: { username: 'Admin' } 
+    }));
     navigate('/');
   };
 

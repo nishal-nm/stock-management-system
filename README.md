@@ -107,6 +107,11 @@ The React App will be accessible at `http://localhost:5173/`
 
 ---
 
+## 📖 API Documentation & Playground
+The API endpoints are fully self-documenting and interactive. Ensure your backend server is running and navigate to:
+- **Swagger UI**: [http://localhost:8000/api/schema/swagger-ui/](http://localhost:8000/api/schema/swagger-ui/) (To test endpoints and view input/output payload structures)
+- **Redoc**: [http://localhost:8000/api/schema/redoc/](http://localhost:8000/api/schema/redoc/) (To view alternate visualizer schemas)
+
 ## 🔒 Authentication
 To access the system, you must log in.
 Navigate to the frontend (`http://localhost:5173`), and use your **superuser** credentials to access the Dashboard and manage inventory.

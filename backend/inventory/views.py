@@ -19,6 +19,20 @@ from .serializers import (
     StockPurchaseSaleSerializer
 )
 
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from rest_framework_simplejwt.views import TokenObtainPairView
+
+class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
+    def validate(self, attrs):
+        data = super().validate(attrs)
+        data['is_staff'] = self.user.is_staff
+        data['username'] = self.user.username
+        return data
+
+class MyTokenObtainPairView(TokenObtainPairView):
+    serializer_class = MyTokenObtainPairSerializer
+
+
 # --- utility classes ---
 class CustomPagination(PageNumberPagination):
     page_size = 20
@@ -84,7 +98,7 @@ class CategoryDetail(APIView):
 
 # --- Products Views ---
 class ProductList(APIView):
-    queryset = Products.objects.filter(Active=True)
+    queryset = Products.objects.filter(is_deleted=False)
     filter_backends = [DjangoFilterBackend, SearchFilter]
     search_fields = (
         "ProductName",
@@ -100,7 +114,7 @@ class ProductList(APIView):
         return queryset
 
     def get(self, request):
-        queryset = Products.objects.filter(Active=True)
+        queryset = Products.objects.filter(is_deleted=False)
         queryset = self.filter_queryset(queryset)
         paginator = CustomPagination()
         page = paginator.paginate_queryset(queryset, request, view=self)
@@ -126,7 +140,7 @@ class ProductDetail(APIView):
             return Products.objects.select_related("Category").prefetch_related(
                 "variants__options",
                 "sub_variants__options",
-            ).get(pk=pk, Active=True)
+            ).get(pk=pk, is_deleted=False)
             
         except Products.DoesNotExist:
             raise Http404
@@ -155,10 +169,14 @@ class ProductDetail(APIView):
     def delete(self, request, pk):
         if not request.user.is_staff:
             return Response({"detail": "You do not have permission to perform this action."}, status=status.HTTP_403_FORBIDDEN)
+        import uuid
         product = self.get_object(pk)
-        product.Active = False
-        product.save(update_fields=["Active"])
-        logger.info(f"Product soft-deleted: '{product.ProductName}' (ID: {pk})")
+        product.is_deleted = True
+        suffix = f"_del_{uuid.uuid4().hex[:8]}"
+        product.ProductCode = f"{product.ProductCode}{suffix}"[:255]
+        product.ProductName = f"{product.ProductName} (Deleted)"[:255]
+        product.save(update_fields=["is_deleted", "ProductCode", "ProductName"])
+        logger.info(f"Product soft-deleted via is_deleted: '{product.ProductName}' (ID: {pk})")
         return Response(
             {
                 "success": True,
@@ -176,27 +194,28 @@ class ProductDashboard(APIView):
         from django.db.models.functions import TruncDate
 
         # Real Total Products (Active only)
-        total_products = Products.objects.filter(Active=True).count()
+        total_products = Products.objects.filter(Active=True, is_deleted=False).count()
         
         # Real Total Stock Units
-        total_stock = Products.objects.filter(Active=True).aggregate(total=Sum('TotalStock'))['total'] or 0
+        total_stock = Products.objects.filter(Active=True, is_deleted=False).aggregate(total=Sum('TotalStock'))['total'] or 0
         total_stock = float(total_stock)
         
         # Top 5 products by stock
-        top_products = Products.objects.filter(Active=True).order_by('-TotalStock')[:5].values('id', 'ProductName', 'TotalStock')
+        top_products = Products.objects.filter(Active=True, is_deleted=False).order_by('-TotalStock')[:5].values('id', 'ProductName', 'TotalStock')
         
         # Recent 10 transactions
-        recent_transactions = StockTransaction.objects.select_related('sub_variant', 'sub_variant__product').filter(sub_variant__product__Active=True).order_by('-created_at')[:10]
+        recent_transactions = StockTransaction.objects.select_related('sub_variant', 'sub_variant__product').filter(sub_variant__product__Active=True, sub_variant__product__is_deleted=False).order_by('-created_at')[:10]
         
         # Low Stock count (Subvariants with stock <= low_stock_threshold)
         low_stock_count = SubVariant.objects.filter(
             product__Active=True,
+            product__is_deleted=False,
             stock__lte=F('low_stock_threshold')
         ).count()
         
         # Today's transaction count
         today = timezone.now().date()
-        transactions_today = StockTransaction.objects.filter(created_at__date=today, sub_variant__product__Active=True).count()
+        transactions_today = StockTransaction.objects.filter(created_at__date=today, sub_variant__product__Active=True, sub_variant__product__is_deleted=False).count()
         
         # Calculate last 7 days cumulative stock level
         end_date = today
@@ -204,7 +223,8 @@ class ProductDashboard(APIView):
         
         range_transactions = StockTransaction.objects.filter(
             created_at__date__range=[start_date, end_date],
-            sub_variant__product__Active=True
+            sub_variant__product__Active=True,
+            sub_variant__product__is_deleted=False
         ).annotate(date=TruncDate('created_at')).values('date', 'transaction_type').annotate(total=Sum('quantity'))
         
         tx_map = {}
@@ -448,7 +468,7 @@ class StockReport(APIView):
     def get(self, request):
         if not request.user.is_staff:
             return Response({"detail": "You do not have permission to perform this action."}, status=status.HTTP_403_FORBIDDEN)
-        queryset = StockTransaction.objects.select_related('sub_variant', 'sub_variant__product').filter(sub_variant__product__Active=True).order_by('-created_at')
+        queryset = StockTransaction.objects.select_related('sub_variant', 'sub_variant__product').filter(sub_variant__product__Active=True, sub_variant__product__is_deleted=False).order_by('-created_at')
         
         start_date = request.query_params.get('start_date')
         end_date = request.query_params.get('end_date')
@@ -474,5 +494,20 @@ class StockReport(APIView):
             serializer = StockTransactionSerializer(page, many=True, context={'request': request})
             return paginator.get_paginated_response(serializer.data)
         serializer = StockTransactionSerializer(queryset, many=True, context={'request': request})
+        return Response(serializer.data)
+
+
+class SubVariantStockList(APIView):
+    def get(self, request):
+        queryset = SubVariant.objects.select_related('product').prefetch_related('options').filter(
+            product__is_deleted=False,
+            product__Active=True
+        ).order_by('product__ProductCode', 'name')
+        paginator = CustomPagination()
+        page = paginator.paginate_queryset(queryset, request, view=self)
+        if page is not None:
+            serializer = SubVariantSerializer(page, many=True, context={'request': request})
+            return paginator.get_paginated_response(serializer.data)
+        serializer = SubVariantSerializer(queryset, many=True, context={'request': request})
         return Response(serializer.data)
 

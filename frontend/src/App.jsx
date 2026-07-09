@@ -16,6 +16,14 @@ function ProtectedRoute({ children }) {
   return children;
 }
 
+function AdminRoute({ children }) {
+  const isAuthenticated = useSelector((state) => state.auth.isAuthenticated);
+  const isStaff = useSelector((state) => state.auth.isStaff);
+  if (!isAuthenticated) return <Navigate to="/login" />;
+  if (!isStaff) return <Navigate to="/" />;
+  return children;
+}
+
 export default function App() {
   return (
     <Routes>
@@ -27,7 +35,7 @@ export default function App() {
         <Route path="products/edit/:id" element={<ProductForm />} />
         <Route path="categories" element={<Categories />} />
         <Route path="stock/movement" element={<StockManagement />} />
-        <Route path="stock/report" element={<StockReport />} />
+        <Route path="stock/report" element={<AdminRoute><StockReport /></AdminRoute>} />
       </Route>
     </Routes>
   );

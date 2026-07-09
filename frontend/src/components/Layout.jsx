@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { logout } from '../store/authSlice';
 import { LayoutDashboard, Package, PlusSquare, ArrowRightLeft, LogOut, FileText, Tags } from 'lucide-react';
 import clsx from 'clsx';
@@ -11,6 +11,7 @@ export default function Layout() {
   const navigate = useNavigate();
   const location = useLocation();
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const isStaff = useSelector((state) => state.auth.isStaff);
 
   const handleLogout = () => {
     setShowLogoutConfirm(false);
@@ -24,7 +25,7 @@ export default function Layout() {
     { name: 'Create Product', path: '/products/new', icon: PlusSquare, isSubItem: true },
     { name: 'Categories', path: '/categories', icon: Tags },
     { name: 'Stock Movement', path: '/stock/movement', icon: ArrowRightLeft },
-    { name: 'Stock Report', path: '/stock/report', icon: FileText },
+    ...(isStaff ? [{ name: 'Stock Report', path: '/stock/report', icon: FileText }] : []),
   ];
 
   return (

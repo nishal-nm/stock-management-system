@@ -1,23 +1,33 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { useSelector } from 'react-redux';
 import { Search, Plus, Eye, Edit, Trash2, Loader2 } from 'lucide-react';
 import client from '../api/client';
 import ConfirmModal from '../components/ConfirmModal';
 import AlertModal from '../components/AlertModal';
 import SubVariantLabel from '../components/SubVariantLabel';
+import { useProducts } from '../hooks/useProducts';
+import { useCategories } from '../hooks/useCategories';
 
 export default function ProductList() {
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [page, setPage] = useState(1);
-  const [totalItems, setTotalItems] = useState(0);
-  const [totalPages, setTotalPages] = useState(1);
-  const pageSize = 10;
+  const isStaff = useSelector((state) => state.auth.isStaff);
+  
+  const {
+    products,
+    setProducts,
+    loading,
+    searchTerm,
+    setSearchTerm,
+    selectedCategory,
+    setSelectedCategory,
+    page,
+    setPage,
+    totalItems,
+    totalPages,
+    fetchProducts
+  } = useProducts();
 
-  // Category list and filter state
-  const [categories, setCategories] = useState([]);
-  const [selectedCategory, setSelectedCategory] = useState('');
+  const { categories } = useCategories();
 
   // View details modal
   const [productDetails, setProductDetails] = useState(null);
@@ -30,45 +40,6 @@ export default function ProductList() {
   const [alertConfig, setAlertConfig] = useState({ isOpen: false, title: '', message: '', type: 'info' });
 
   const navigate = useNavigate();
-
-  useEffect(() => {
-    const fetchCategories = async () => {
-      try {
-        const res = await client.get('/categories/?page_size=100');
-        setCategories(res.data.results || res.data || []);
-      } catch (err) {
-        console.error('Failed to fetch categories:', err);
-      }
-    };
-    fetchCategories();
-  }, []);
-
-  const fetchProducts = async () => {
-    setLoading(true);
-    try {
-      let url = `/products/?page=${page}&search=${searchTerm}`;
-      if (selectedCategory) {
-        url += `&Category=${selectedCategory}`;
-      }
-      const response = await client.get(url);
-      setProducts(response.data.results || response.data || []);
-      if (response.data.count !== undefined) {
-        setTotalItems(response.data.count);
-        setTotalPages(Math.ceil(response.data.count / pageSize));
-      }
-    } catch (err) {
-      console.error('Failed to fetch products:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      fetchProducts();
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [page, searchTerm, selectedCategory]);
 
   const confirmDeleteAction = async () => {
     if (!confirmDelete) return;
@@ -187,9 +158,12 @@ export default function ProductList() {
             <table className="w-full text-sm text-left">
               <thead className="text-xs text-slate-500 uppercase bg-slate-50 border-b border-slate-200">
                 <tr>
-                  <th className="px-5 py-3 font-bold tracking-wider">Product</th>
-                  <th className="px-5 py-3 font-bold tracking-wider">Code / HSN</th>
+                  <th className="px-5 py-3 font-bold tracking-wider">Product Name</th>
+                  <th className="px-5 py-3 font-bold tracking-wider">Product Code</th>
+                  <th className="px-5 py-3 font-bold tracking-wider">HSN Code</th>
                   <th className="px-5 py-3 font-bold tracking-wider">Total Stock</th>
+                  <th className="px-5 py-3 font-bold tracking-wider">Created Date</th>
+                  <th className="px-5 py-3 font-bold tracking-wider">Status</th>
                   <th className="px-5 py-3 font-bold tracking-wider text-right">Actions</th>
                 </tr>
               </thead>
@@ -205,24 +179,35 @@ export default function ProductList() {
                     <td className="px-5 py-3">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-lg overflow-hidden bg-slate-100 border border-slate-200 flex-shrink-0 flex items-center justify-center text-slate-400">
-                          {product.ProductImage ? (
-                            <img src={product.ProductImage} alt={product.ProductName} className="w-full h-full object-cover" />
+                          {product.ProductImage?.thumbnail ? (
+                            <img src={product.ProductImage.thumbnail} alt={product.ProductName} className="w-full h-full object-cover" />
                           ) : (
                             <Search size={16} />
                           )}
                         </div>
                         <div>
                           <div className="font-semibold text-slate-900 text-sm">{product.ProductName}</div>
-                          <div className="text-xs text-slate-500 mt-0.5">ID: {product.ProductID}</div>
                         </div>
                       </div>
                     </td>
                     <td className="px-5 py-3 text-slate-600 font-medium">
-                      <div>Code: {product.ProductCode}</div>
-                      <div className="text-xs text-slate-400 mt-0.5">HSN: {product.HSNCode || 'N/A'}</div>
+                      {product.ProductCode}
+                    </td>
+                    <td className="px-5 py-3 text-slate-600 font-medium">
+                      {product.HSNCode || 'N/A'}
                     </td>
                     <td className="px-5 py-3 font-bold text-slate-900">
                       {parseFloat(product.TotalStock).toFixed(0)} units
+                    </td>
+                    <td className="px-5 py-3 text-slate-600 font-medium">
+                      {new Date(product.CreatedDate).toLocaleDateString()}
+                    </td>
+                    <td className="px-5 py-3">
+                      {product.Active ? (
+                        <span className="px-2 py-1 bg-emerald-50 text-emerald-700 text-xs font-bold rounded border border-emerald-200">Active</span>
+                      ) : (
+                        <span className="px-2 py-1 bg-rose-50 text-rose-700 text-xs font-bold rounded border border-rose-200">Inactive</span>
+                      )}
                     </td>
                     <td className="px-5 py-3 text-right">
                       <div className="flex items-center justify-end gap-1">
@@ -232,9 +217,11 @@ export default function ProductList() {
                         <button onClick={() => navigate(`/products/edit/${product.id}`)} className="p-1.5 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors" title="Edit">
                           <Edit size={16} />
                         </button>
-                        <button onClick={() => handleDelete(product.id)} className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors" title="Delete">
-                          <Trash2 size={16} />
-                        </button>
+                        {isStaff && (
+                          <button onClick={() => handleDelete(product.id)} className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors" title="Delete">
+                            <Trash2 size={16} />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -321,7 +308,7 @@ export default function ProductList() {
                           </thead>
                           <tbody className="divide-y divide-slate-100">
                             {productDetails.subvariants.map(sv => {
-                              const lowStock = sv.low_stock_threshold && parseFloat(sv.stock) <= parseFloat(sv.low_stock_threshold);
+                              const lowStock = sv.is_low_stock;
                               return (
                                 <tr key={sv.id} className="hover:bg-slate-50">
                                   <td className="px-3 py-2 align-middle">

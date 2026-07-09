@@ -25,6 +25,7 @@ class Products(models.Model):
     CreatedUser = models.ForeignKey('auth.User', related_name='user%(class)s_objects', on_delete=models.CASCADE)
     IsFavourite = models.BooleanField(default=False)
     Active = models.BooleanField(default=True)
+    is_deleted = models.BooleanField(default=False)
     HSNCode = models.CharField(max_length=255, blank=True, null=True)
     TotalStock = models.DecimalField(default=0.00, max_digits=20, decimal_places=8, blank=True, null=True)
     Category = models.ForeignKey(Category, on_delete=models.SET_NULL, blank=True, null=True, related_name='products')
@@ -109,6 +110,7 @@ class StockTransaction(models.Model):
     sub_variant = models.ForeignKey(SubVariant, related_name='transactions', on_delete=models.CASCADE)
     transaction_type = models.CharField(max_length=10, choices=TRANSACTION_TYPES)
     quantity = models.DecimalField(max_digits=20, decimal_places=8)
+    running_balance = models.DecimalField(max_digits=20, decimal_places=8, default=0.00)
     notes = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     

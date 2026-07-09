@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowDownToLine, ArrowUpFromLine, Search, AlertCircle, Save, Loader2 } from 'lucide-react';
 import client from '../api/client';
-import AlertModal from '../components/AlertModal';
 import SubVariantLabel from '../components/SubVariantLabel';
 
 export default function StockManagement() {
@@ -21,9 +20,9 @@ export default function StockManagement() {
   const [loading, setLoading] = useState(true);
   const [loadingSubVariants, setLoadingSubVariants] = useState(false);
   const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
   
-  const [alertConfig, setAlertConfig] = useState({ isOpen: false, title: '', message: '', type: 'info' });
   const [successMessage, setSuccessMessage] = useState('');
 
   const getSubVariantLabelText = (sv) => {
@@ -55,7 +54,7 @@ export default function StockManagement() {
     }
   }, [searchTerm, products]);
 
-  const fetchSubVariants = async (productId) => {
+  const fetchSubVariants = async (productId, retainId = null) => {
     setLoadingSubVariants(true);
     try {
       const response = await client.get(`/products/${productId}/subvariants/`);
@@ -68,7 +67,12 @@ export default function StockManagement() {
       });
       
       setSubVariants(sorted);
-      setSelectedSubVariant(sorted.length > 0 ? sorted[0] : null);
+      if (retainId) {
+        const found = sorted.find(s => s.id === retainId);
+        setSelectedSubVariant(found || (sorted.length > 0 ? sorted[0] : null));
+      } else {
+        setSelectedSubVariant(sorted.length > 0 ? sorted[0] : null);
+      }
     } catch (err) {
       console.error("Failed to fetch subvariants:", err);
     } finally {
@@ -79,6 +83,7 @@ export default function StockManagement() {
   const handleProductSelect = (product) => {
     setSelectedProduct(product);
     setError('');
+    setFieldErrors({});
     setDropdownOpen(false);
     fetchSubVariants(product.id);
   };
@@ -86,21 +91,30 @@ export default function StockManagement() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setFieldErrors({});
     
+    let hasError = false;
+    const newFieldErrors = {};
+
     if (!selectedSubVariant) {
-      setError('Please select a sub-variant.');
-      return;
+      newFieldErrors.subVariant = 'Please select a sub-variant.';
+      hasError = true;
     }
 
     const qty = parseInt(quantity);
     if (!qty || qty <= 0) {
-      setError('Quantity must be greater than zero.');
-      return;
+      newFieldErrors.quantity = 'Quantity must be greater than zero.';
+      hasError = true;
+    } else if (selectedSubVariant) {
+      const currentStock = parseFloat(selectedSubVariant.stock);
+      if (transactionType === 'OUT' && qty > currentStock) {
+        newFieldErrors.quantity = `Cannot remove ${qty} items. Only ${currentStock} in stock.`;
+        hasError = true;
+      }
     }
     
-    const currentStock = parseFloat(selectedSubVariant.stock);
-    if (transactionType === 'OUT' && qty > currentStock) {
-      setError(`Cannot remove ${qty} items. Only ${currentStock} in stock.`);
+    if (hasError) {
+      setFieldErrors(newFieldErrors);
       return;
     }
     
@@ -117,7 +131,7 @@ export default function StockManagement() {
       setTimeout(() => setSuccessMessage(''), 3000);
       setQuantity('');
       setNotes('');
-      fetchSubVariants(selectedProduct.id);
+      fetchSubVariants(selectedProduct.id, selectedSubVariant.id);
       
       const updateStock = (list) => list.map(p => {
         if (p.id === selectedProduct.id) {
@@ -134,7 +148,7 @@ export default function StockManagement() {
       }));
 
     } catch (err) {
-      setError(err.response?.data?.message || err.response?.data?.quantity?.[0] || 'Failed to update stock');
+      setError(err.friendlyMessage || err.response?.data?.message || err.response?.data?.quantity?.[0] || 'Failed to update stock');
     } finally {
       setSubmitting(false);
     }
@@ -234,7 +248,7 @@ export default function StockManagement() {
                                 <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${
                                   isSelected 
                                     ? 'bg-slate-800 border-slate-700 text-slate-300' 
-                                    : parseFloat(sv.stock) <= 0 
+                                    : sv.is_low_stock 
                                       ? 'bg-rose-50 border-rose-200 text-rose-700' 
                                       : 'bg-slate-100 border-slate-200 text-slate-600'
                                 }`}>
@@ -247,13 +261,14 @@ export default function StockManagement() {
                       )}
                     </div>
                   )}
+                  {fieldErrors.subVariant && <p className="text-xs text-rose-600 mt-1 font-semibold">{fieldErrors.subVariant}</p>}
                 </div>
               </div>
               
               <div className="grid grid-cols-2 gap-4">
                 <button
                   type="button"
-                  onClick={() => { setTransactionType('IN'); setError(''); }}
+                  onClick={() => { setTransactionType('IN'); setError(''); setFieldErrors({}); }}
                   disabled={subVariants.length === 0}
                   className={`flex flex-col items-center justify-center gap-2.5 p-5 rounded-lg border-2 transition-colors disabled:opacity-50 ${transactionType === 'IN' ? 'border-emerald-600 bg-emerald-50 text-emerald-800' : 'border-slate-200 hover:border-slate-300 text-slate-500 bg-white'}`}
                 >
@@ -263,7 +278,7 @@ export default function StockManagement() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => { setTransactionType('OUT'); setError(''); }}
+                  onClick={() => { setTransactionType('OUT'); setError(''); setFieldErrors({}); }}
                   disabled={subVariants.length === 0}
                   className={`flex flex-col items-center justify-center gap-2.5 p-5 rounded-lg border-2 transition-colors disabled:opacity-50 ${transactionType === 'OUT' ? 'border-rose-600 bg-rose-50 text-rose-800' : 'border-slate-200 hover:border-slate-300 text-slate-500 bg-white'}`}
                 >
@@ -296,10 +311,14 @@ export default function StockManagement() {
                     required
                     disabled={subVariants.length === 0}
                     value={quantity}
-                    onChange={(e) => setQuantity(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-slate-400 text-base font-extrabold bg-white text-slate-900"
+                    onChange={(e) => {
+                      setQuantity(e.target.value);
+                      if (fieldErrors.quantity) setFieldErrors({...fieldErrors, quantity: null});
+                    }}
+                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none text-base font-extrabold bg-white text-slate-900 ${fieldErrors.quantity ? 'border-rose-500 focus:border-rose-500' : 'border-slate-200 focus:border-slate-400'}`}
                     placeholder="0"
                   />
+                  {fieldErrors.quantity && <p className="text-xs text-rose-600 mt-1 font-semibold">{fieldErrors.quantity}</p>}
                 </div>
                 
                 <div>
