@@ -17,6 +17,20 @@ export default function StockReport() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
 
+  const handleStartDateChange = (e) => {
+    const val = e.target.value;
+    if (endDate && val > endDate) return;
+    setStartDate(val);
+    setPage(1);
+  };
+
+  const handleEndDateChange = (e) => {
+    const val = e.target.value;
+    if (startDate && val < startDate) return;
+    setEndDate(val);
+    setPage(1);
+  };
+
   const fetchReport = useCallback(async () => {
     setLoading(true);
     try {
@@ -98,12 +112,13 @@ export default function StockReport() {
         {/* Filters */}
         <div className="p-5 border-b border-slate-200 dark:border-slate-700 flex flex-col lg:flex-row gap-4 justify-between items-center bg-slate-50/50 dark:bg-slate-800/50">
           <div className="flex flex-wrap gap-3 w-full lg:w-auto">
-            <div className="relative group flex-1 sm:flex-none">
+             <div className="relative group flex-1 sm:flex-none">
               <Calendar className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
               <input 
                 type="date" 
                 value={startDate}
-                onChange={e => { setStartDate(e.target.value); setPage(1); }}
+                max={endDate}
+                onChange={handleStartDateChange}
                 className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 shadow-sm" 
               />
             </div>
@@ -113,7 +128,8 @@ export default function StockReport() {
               <input 
                 type="date" 
                 value={endDate}
-                onChange={e => { setEndDate(e.target.value); setPage(1); }}
+                min={startDate}
+                onChange={handleEndDateChange}
                 className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 shadow-sm" 
               />
             </div>

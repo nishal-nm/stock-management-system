@@ -4,33 +4,14 @@ from .models import Category, Products, ProductVariant, VariantOption, SubVarian
 from .utils import generate_sub_variants_for_product
 
 class CategorySerializer(serializers.ModelSerializer):
+    products_count = serializers.SerializerMethodField()
+
     class Meta:
         model = Category
-        fields = '__all__'
+        fields = ['id', 'name', 'description', 'products_count']
 
-class ProductsSerializer(serializers.ModelSerializer):
-    variants = ProductVariantSerializer(many=True, required=False, write_only=True)
-    
-    class Meta:
-        model = Products
-        fields = '__all__'
-        read_only_fields = ('TotalStock', 'CreatedUser')
-
-    @transaction.atomic
-    def create(self, validated_data):
-        variants_data = validated_data.pop('variants', [])
-        product = Products.objects.create(**validated_data)
-        
-        for variant_data in variants_data:
-            options_data = variant_data.pop('options', [])
-            variant = ProductVariant.objects.create(product=product, **variant_data)
-            for option_data in options_data:
-                VariantOption.objects.create(variant=variant, **option_data)
-                
-        if variants_data:
-            generate_sub_variants_for_product(product)
-            
-        return product
+    def get_products_count(self, obj):
+        return obj.products.filter(Active=True).count()
 
 class VariantOptionSerializer(serializers.ModelSerializer):
     class Meta:
@@ -69,6 +50,44 @@ class ProductVariantSerializer(serializers.ModelSerializer):
         
         generate_sub_variants_for_product(instance.product)
         return instance
+
+class ProductWriteSerializer(serializers.ModelSerializer):
+    variants = ProductVariantSerializer(many=True, required=False, write_only=True)
+    
+    class Meta:
+        model = Products
+        fields = '__all__'
+        read_only_fields = (
+            "ProductID",
+            "TotalStock",
+            "CreatedUser",
+        )
+
+    @transaction.atomic
+    def create(self, validated_data):
+        variants_data = validated_data.pop('variants', [])
+        product = Products.objects.create(**validated_data)
+        
+        for variant_data in variants_data:
+            options_data = variant_data.pop('options', [])
+            variant = ProductVariant.objects.create(product=product, **variant_data)
+            for option_data in options_data:
+                VariantOption.objects.create(variant=variant, **option_data)
+                
+        if variants_data:
+            generate_sub_variants_for_product(product)
+            
+        return product
+
+class ProductReadSerializer(serializers.ModelSerializer):
+    variants = ProductVariantSerializer(
+        many=True,
+        read_only=True
+    )
+
+    class Meta:
+        model = Products
+        fields = "__all__"
 
 class SubVariantSerializer(serializers.ModelSerializer):
     options = VariantOptionSerializer(many=True, read_only=True)
@@ -117,7 +136,15 @@ class StockPurchaseSaleSerializer(serializers.ModelSerializer):
                 
         return attrs
 
+    @transaction.atomic
     def create(self, validated_data):
-        validated_data.pop('sub_variant_id')
-        validated_data['transaction_type'] = self.context.get('transaction_type')
-        return super().create(validated_data)
+        validated_data.pop("sub_variant_id")
+
+        transaction_obj = StockTransaction.objects.create(
+            sub_variant=validated_data["sub_variant"],
+            transaction_type=self.context.get("transaction_type"),
+            quantity=validated_data["quantity"],
+            notes=validated_data.get("notes"),
+        )
+
+        return transaction_obj

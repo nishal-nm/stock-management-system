@@ -24,7 +24,20 @@ export default function ProductForm() {
   ]);
   
   const [subVariants, setSubVariants] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [alertConfig, setAlertConfig] = useState({ isOpen: false, title: '', message: '', type: 'info' });
+
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const res = await client.get('/categories/?page_size=100');
+        setCategories(res.data.results || res.data || []);
+      } catch (err) {
+        console.error('Failed to fetch categories:', err);
+      }
+    };
+    fetchCategories();
+  }, []);
 
   useEffect(() => {
     if (isEditMode) {
@@ -164,6 +177,9 @@ export default function ProductForm() {
       const formDataToSend = new FormData();
       formDataToSend.append('ProductName', formData.name);
       formDataToSend.append('Active', 'true');
+      if (formData.category) {
+        formDataToSend.append('Category', formData.category);
+      }
       
       if (!isEditMode) {
         const pid = Math.floor(Math.random() * 1000000);
@@ -255,12 +271,15 @@ export default function ProductForm() {
                       className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
                     >
                       <option value="">Select Category</option>
-                      <option value="Electronics">Electronics</option>
-                      <option value="Furniture">Furniture</option>
+                      {categories.map((cat) => (
+                        <option key={cat.id} value={cat.id}>
+                          {cat.name}
+                        </option>
+                      ))}
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Base Price ($)</label>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Base Price (₹)</label>
                     <input 
                       type="number" 
                       required

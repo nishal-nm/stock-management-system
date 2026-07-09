@@ -30,7 +30,7 @@ export default function Login() {
 
   // Skip actual api call if user just wants to bypass for frontend testing
   const handleTestLogin = () => {
-    dispatch(loginSuccess({ token: 'test-token', user: { name: 'Admin', email: 'admin@vikn.com' } }));
+    dispatch(loginSuccess({ token: 'test-token', user: { name: 'Admin', email: 'admin@example.com' } }));
     navigate('/');
   };
 
@@ -49,7 +49,7 @@ export default function Login() {
           </div>
         </div>
         <h2 className="mt-6 text-center text-3xl font-extrabold text-white tracking-tight">
-          Welcome to Vikn
+          Welcome to StockFlow
         </h2>
         <p className="mt-2 text-center text-sm text-slate-400">
           Sign in to manage your inventory

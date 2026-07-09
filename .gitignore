@@ -5,8 +5,10 @@ __pycache__/
 *.sqlite3
 venv/
 env/
-.env
+.env*
+!.env.example
 inventory.log
+media/
 
 # Node / React
 node_modules/

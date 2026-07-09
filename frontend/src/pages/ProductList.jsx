@@ -53,7 +53,6 @@ export default function ProductList() {
     try {
       await client.delete(`/products/${confirmDelete}/`);
       fetchProducts();
-      setAlertConfig({ isOpen: true, title: 'Success', message: 'Product deleted successfully.', type: 'success' });
     } catch (err) {
       setAlertConfig({ isOpen: true, title: 'Error', message: 'Failed to delete product. Only admins can delete products.', type: 'error' });
     }
@@ -140,14 +139,13 @@ export default function ProductList() {
                   <th className="px-6 py-4 font-semibold tracking-wider">Product</th>
                   <th className="px-6 py-4 font-semibold tracking-wider">Code / HSN</th>
                   <th className="px-6 py-4 font-semibold tracking-wider">Total Stock</th>
-                  <th className="px-6 py-4 font-semibold tracking-wider">Status</th>
                   <th className="px-6 py-4 font-semibold tracking-wider text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
                 {products.length === 0 ? (
                   <tr>
-                    <td colSpan="5" className="px-6 py-8 text-center text-slate-500">
+                    <td colSpan="4" className="px-6 py-8 text-center text-slate-500">
                       No products found. Add a new product to get started.
                     </td>
                   </tr>
@@ -174,15 +172,6 @@ export default function ProductList() {
                     </td>
                     <td className="px-6 py-4 font-bold text-slate-900 dark:text-white">
                       {parseFloat(product.TotalStock).toFixed(0)}
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className={`px-3 py-1 rounded-full text-xs font-bold border ${
-                        product.Active 
-                          ? 'bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-500/10 dark:border-emerald-500/20 dark:text-emerald-400' 
-                          : 'bg-rose-50 border-rose-200 text-rose-700 dark:bg-rose-500/10 dark:border-rose-500/20 dark:text-rose-400'
-                      }`}>
-                        {product.Active ? 'Active' : 'Inactive'}
-                      </span>
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -267,7 +256,7 @@ export default function ProductList() {
                           </thead>
                           <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
                             {productDetails.subvariants.map(sv => {
-                              const lowStock = sv.low_stock_threshold && sv.stock <= sv.low_stock_threshold;
+                              const lowStock = sv.low_stock_threshold && parseFloat(sv.stock) <= parseFloat(sv.low_stock_threshold);
                               return (
                                 <tr key={sv.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/20">
                                   <td className="px-4 py-3 font-medium text-slate-900 dark:text-white flex flex-col gap-1">

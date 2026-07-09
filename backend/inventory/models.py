@@ -3,6 +3,9 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 from versatileimagefield.fields import VersatileImageField
 
+from django.db.models import Max
+from django.utils import timezone
+
 class Category(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=255)
@@ -25,6 +28,14 @@ class Products(models.Model):
     HSNCode = models.CharField(max_length=255, blank=True, null=True)
     TotalStock = models.DecimalField(default=0.00, max_digits=20, decimal_places=8, blank=True, null=True)
     Category = models.ForeignKey(Category, on_delete=models.SET_NULL, blank=True, null=True, related_name='products')
+
+    def save(self, *args, **kwargs):
+        if self.ProductID is None:
+            last_product_id = Products.objects.aggregate(Max("ProductID"))["ProductID__max"] or 0
+            self.ProductID = last_product_id + 1
+
+        self.UpdatedDate = timezone.now()
+        super().save(*args, **kwargs)
     
     class Meta:
         db_table = 'products_product'
@@ -32,6 +43,11 @@ class Products(models.Model):
         verbose_name_plural = _('products')
         unique_together = (('ProductCode', 'ProductID'),)
         ordering = ('-CreatedDate', 'ProductID')
+        indexes = [
+            models.Index(fields=['ProductCode']),
+            models.Index(fields=['ProductName']),
+            models.Index(fields=['Category']),
+        ]
 
     def __str__(self):
         return self.ProductName
@@ -43,6 +59,9 @@ class ProductVariant(models.Model):
 
     class Meta:
         unique_together = (('product', 'name'),)
+        indexes = [
+            models.Index(fields=["product"]),
+        ]
 
     def __str__(self):
         return f"{self.product.ProductName} - {self.name}"
@@ -54,6 +73,9 @@ class VariantOption(models.Model):
 
     class Meta:
         unique_together = (('variant', 'value'),)
+        indexes = [
+            models.Index(fields=["variant"]),
+        ]
 
     def __str__(self):
         return f"{self.variant.name}: {self.value}"
@@ -74,6 +96,9 @@ class SubVariant(models.Model):
         constraints = [
             models.CheckConstraint(condition=models.Q(stock__gte=0), name='stock_guard_positive')
         ]
+        indexes = [
+            models.Index(fields=["product"]),
+        ]
 
 class StockTransaction(models.Model):
     TRANSACTION_TYPES = (
@@ -89,3 +114,10 @@ class StockTransaction(models.Model):
     
     def __str__(self):
         return f"{self.transaction_type} - {self.sub_variant} ({self.quantity})"
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["sub_variant"]),
+            models.Index(fields=["transaction_type"]),
+            models.Index(fields=["created_at"]),
+        ]

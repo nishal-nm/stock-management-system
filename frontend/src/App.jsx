@@ -6,6 +6,7 @@ import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import ProductList from './pages/ProductList';
 import ProductForm from './pages/ProductForm';
+import Categories from './pages/Categories';
 import StockManagement from './pages/StockManagement';
 import StockReport from './pages/StockReport';
 
@@ -24,6 +25,7 @@ export default function App() {
         <Route path="products" element={<ProductList />} />
         <Route path="products/new" element={<ProductForm />} />
         <Route path="products/edit/:id" element={<ProductForm />} />
+        <Route path="categories" element={<Categories />} />
         <Route path="stock/movement" element={<StockManagement />} />
         <Route path="stock/report" element={<StockReport />} />
       </Route>
